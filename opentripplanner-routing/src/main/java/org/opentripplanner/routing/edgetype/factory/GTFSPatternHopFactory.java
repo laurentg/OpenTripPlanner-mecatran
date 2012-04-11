@@ -442,6 +442,16 @@ public class GTFSPatternHopFactory {
                 Stop s0 = st0.getStop();
                 Stop s1 = st1.getStop();
                 
+                if (st0.getPickupType() == 1) {
+                    // do not create an interline dwell when
+                    // the last stop on the arriving trip does not
+                    // allow pickups, since this probably means
+                    // that, while two trips share a block,
+                    // riders cannot stay on the vehicle during the
+                    // deadhead
+                    continue;
+                }
+
                 Trip fromExemplar = fromInterlineTrip.tripPattern.exemplar;
                 Trip toExemplar = toInterlineTrip.tripPattern.exemplar;
 
@@ -513,21 +523,21 @@ public class GTFSPatternHopFactory {
             // sanity-check the hop
             if (st0.getArrivalTime() == st1.getArrivalTime() ||
                 st0.getDepartureTime() == st1.getDepartureTime()) {
-                _log.debug("{} {}", st0, st1);
+                _log.trace("{} {}", st0, st1);
                 // series of identical stop times at different stops
-                _log.warn(GraphBuilderAnnotation.register(graph, 
+                _log.trace(GraphBuilderAnnotation.register(graph, 
                           Variety.HOP_ZERO_TIME, hopDistance, 
                           st1.getTrip().getRoute(), 
                           st1.getTrip().getId(), st1.getStopSequence()));
                 // clear stoptimes that are obviously wrong, causing them to later be interpolated
-/* FIXME */
+/* FIXME (lines commented out because they break routability in multi-feed NYC for some reason -AMB) */
 //                st1.clearArrivalTime();
 //                st1.clearDepartureTime();
                 st1bogus = true;
             } else if (hopSpeed > 45) {
                 // 45 m/sec ~= 100 miles/hr
                 // elapsed time of 0 will give speed of +inf
-                _log.warn(GraphBuilderAnnotation.register(graph, 
+                _log.trace(GraphBuilderAnnotation.register(graph, 
                           Variety.HOP_SPEED, hopSpeed, hopDistance,
                           st0.getTrip().getRoute(), 
                           st0.getTrip().getId(), st0.getStopSequence()));
