@@ -119,19 +119,36 @@ public class PlainStreetEdge extends StreetEdge {
                 return false;
             }
         }
-
         if (options.getModes().getWalk() && permission.allows(StreetTraversalPermission.PEDESTRIAN)) {
             return true;
         }
-
         if (options.getModes().getBicycle() && permission.allows(StreetTraversalPermission.BICYCLE)) {
             return true;
         }
-
         if (options.getModes().getCar() && permission.allows(StreetTraversalPermission.CAR)) {
             return true;
         }
-
+        return false;
+    }
+    
+    private boolean canTraverse(TraverseOptions options, TraverseMode mode) {
+        if (options.wheelchairAccessible) {
+            if (!wheelchairAccessible) {
+                return false;
+            }
+            if (maxSlope > options.maxSlope) {
+                return false;
+            }
+        }
+        if (mode == TraverseMode.WALK && permission.allows(StreetTraversalPermission.PEDESTRIAN)) {
+            return true;
+        }
+        if (mode == TraverseMode.BICYCLE && permission.allows(StreetTraversalPermission.BICYCLE)) {
+            return true;
+        }
+        if (mode == TraverseMode.CAR && permission.allows(StreetTraversalPermission.CAR)) {
+            return true;
+        }
         return false;
     }
 
@@ -190,25 +207,27 @@ public class PlainStreetEdge extends StreetEdge {
     }
 
     private State doTraverse(State s0, TraverseOptions options) {
-        if (!canTraverse(options)) {
-            if (options.getModes().contains(TraverseMode.BICYCLE)) {
+    	TraverseMode traverseMode = s0.getNonTransitMode(options);
+        if (!canTraverse(options, traverseMode)) {
+            if (traverseMode == TraverseMode.BICYCLE) {
             	// try walking bike since you can't ride here
                 return doTraverse(s0, options.getWalkingOptions());
             }
             return null;
         }
-        double time = length / options.speed;
+        double speed = options.getSpeed(s0.getNonTransitMode(options));
+        double time = length / speed;
         double weight;
         if (options.wheelchairAccessible) {
-            weight = slopeSpeedEffectiveLength / options.speed;
-        } else if (options.getModes().contains(TraverseMode.BICYCLE)) {
-            time = slopeSpeedEffectiveLength / options.speed;
+            weight = slopeSpeedEffectiveLength / speed;
+        } else if (s0.getNonTransitMode(options).equals(TraverseMode.BICYCLE)) {
+            time = slopeSpeedEffectiveLength / speed;
             switch (options.optimizeFor) {
             case SAFE:
-            	weight = bicycleSafetyEffectiveLength / options.speed;
+            	weight = bicycleSafetyEffectiveLength / speed;
             	break;
             case GREENWAYS:            	
-                weight = bicycleSafetyEffectiveLength / options.speed;
+                weight = bicycleSafetyEffectiveLength / speed;
                 if (bicycleSafetyEffectiveLength / length <= TurnVertex.GREENWAY_SAFETY_FACTOR) {
                 	//greenways are treated as even safer than they really are
                 	weight *= 0.66;
@@ -216,20 +235,20 @@ public class PlainStreetEdge extends StreetEdge {
                 break;
             case FLAT:
                 /* see notes in StreetVertex on speed overhead */
-                weight = length / options.speed + slopeWorkCost;
+                weight = length / speed + slopeWorkCost;
                 break;
             case QUICK:
-                weight = slopeSpeedEffectiveLength / options.speed;
+                weight = slopeSpeedEffectiveLength / speed;
                 break;
             case TRIANGLE:
                 double quick = slopeSpeedEffectiveLength;
                 double safety = bicycleSafetyEffectiveLength;
                 double slope = slopeWorkCost;
                 weight = quick * options.getTriangleTimeFactor() + slope * options.getTriangleSlopeFactor() + safety * options.getTriangleSafetyFactor();
-                weight /= options.speed;
+                weight /= speed;
                 break;
             default:
-                weight = length / options.speed;
+                weight = length / speed;
             }
         } else {
             weight = time;
@@ -239,7 +258,7 @@ public class PlainStreetEdge extends StreetEdge {
         } else {
             weight *= options.walkReluctance;
         }
-        FixedModeEdge en = new FixedModeEdge(this, options.getModes().getNonTransitMode());
+        FixedModeEdge en = new FixedModeEdge(this, s0.getNonTransitMode(options));
         if (wheelchairNotes != null && options.wheelchairAccessible) {
             en.addNotes(wheelchairNotes);
         }
@@ -289,7 +308,7 @@ public class PlainStreetEdge extends StreetEdge {
     
     @Override
     public double timeLowerBound(TraverseOptions options) {
-        return this.length / options.speed;
+        return this.length / options.getSpeedHigherBound();
     }
         
     public void setSlopeSpeedEffectiveLength(double slopeSpeedEffectiveLength) {

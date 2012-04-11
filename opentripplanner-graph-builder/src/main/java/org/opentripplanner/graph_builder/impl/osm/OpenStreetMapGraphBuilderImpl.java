@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.opentripplanner.common.IterableLibrary;
 import org.opentripplanner.common.StreetUtils;
 import org.opentripplanner.common.TurnRestriction;
 import org.opentripplanner.common.TurnRestrictionType;
@@ -53,13 +54,17 @@ import org.opentripplanner.routing.edgetype.ElevatorBoardEdge;
 import org.opentripplanner.routing.edgetype.ElevatorHopEdge;
 import org.opentripplanner.routing.edgetype.FreeEdge;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
+import org.opentripplanner.routing.edgetype.RentABikeOffEdge;
+import org.opentripplanner.routing.edgetype.RentABikeOnEdge;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
+import org.opentripplanner.routing.edgetype.loader.NetworkLinkerLibrary;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.patch.Alert;
 import org.opentripplanner.routing.patch.TranslatedString;
 import org.opentripplanner.routing.util.ElevationUtils;
+import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
 import org.opentripplanner.routing.vertextype.ElevatorOffboardVertex;
 import org.opentripplanner.routing.vertextype.ElevatorOnboardVertex;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
@@ -203,6 +208,8 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
 
             // handle turn restrictions, road names, and level maps in relations
             processRelations();
+
+            processBikeRentalNodes();
 
             // Remove all simple islands
             _nodes.keySet().retainAll(_nodesWithNeighbors);
@@ -410,6 +417,8 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
 
             applyBikeSafetyFactor(graph);
             StreetUtils.makeEdgeBased(graph, endpoints, turnRestrictions);
+
+            linkBikeRentalStations();
 
         } // END buildGraph()
 
@@ -646,7 +655,10 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
         }
 
         public void addNode(OSMNode node) {
-            if (!_nodesWithNeighbors.contains(node.getId()))
+            /* keep some nodes w/o neighbors, such as bike rental stations. */
+            boolean keepNodeWithoutNeighbors = node.isTag("amenity", "bicycle_rental");
+
+            if (!keepNodeWithoutNeighbors && !_nodesWithNeighbors.contains(node.getId()))
                 return;
 
             if (_nodes.containsKey(node.getId()))
@@ -773,6 +785,46 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     processRoad(relation);
                 }
                 // multipolygons were already processed in secondPhase()
+            }
+        }
+
+        private void processBikeRentalNodes() {
+            _log.debug("Processing bike rental nodes...");
+            int n = 0;
+            for (OSMNode node : _nodes.values()) {
+                if (node.isTag("amenity", "bicycle_rental")) {
+                    n++;
+                    String name = node.getTag("name");
+                    if (name == null)
+                        name = "Bike rental " + node.getId();
+                    int capacity = Integer.MAX_VALUE;
+                    if (node.hasTag("capacity")) {
+                        capacity = Integer.parseInt(node.getTag("capacity"));
+                    }
+                    BikeRentalStationVertex station = new BikeRentalStationVertex(graph,
+                            "bike rental " + node.getId(), node.getLon(), node.getLat(),
+                            "Bike rental station " + name, capacity);
+                    new RentABikeOnEdge(station, station);
+                    new RentABikeOffEdge(station, station);
+                }
+            }
+            _log.debug("Created " + n + " bike rental stations.");
+        }
+
+        private void linkBikeRentalStations() {
+            _log.debug("Linking bike rental stations...");
+            NetworkLinkerLibrary networkLinkerLibrary = new NetworkLinkerLibrary(graph,
+                    new HashMap<Class<?>, Object>());
+            // Iterate over a copy of vertex list because it will be modified
+            ArrayList<Vertex> vertices = new ArrayList<Vertex>();
+            vertices.addAll(graph.getVertices());
+
+            for (BikeRentalStationVertex brsv : IterableLibrary.filter(vertices,
+                    BikeRentalStationVertex.class)) {
+                if (!networkLinkerLibrary.connectVertexToStreets(brsv)) {
+                    _log.warn(GraphBuilderAnnotation.register(graph,
+                            Variety.BIKE_RENTAL_STATION_UNLINKED, brsv));
+                }
             }
         }
 

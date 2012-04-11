@@ -16,6 +16,7 @@ package org.opentripplanner.routing.core;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A set of traverse modes -- typically, one non-transit mode (walking, biking, car) and zero or
@@ -293,6 +294,14 @@ public class TraverseModeSet implements Cloneable, Serializable {
         }
     }
     
+    /** Returns a TraverseModeSet containing only the non-transit modes set. */
+    public TraverseModeSet getNonTransitSet() {
+    	TraverseModeSet retval = new TraverseModeSet();
+    	retval.modes = modes;
+    	retval.setTransit(false);
+    	return retval;
+    }
+    
     /** Returns true if any the trip may use some train-like (train, subway, tram) mode */
     public boolean getTraininsh() {
         return (modes & (MODE_TRAINISH)) != 0;
@@ -343,17 +352,30 @@ public class TraverseModeSet implements Cloneable, Serializable {
         }
     }
 
-    public TraverseMode getNonTransitMode() {
-        if ((modes & MODE_CAR) != 0) {
-            return TraverseMode.CAR;
-        }
-        if ((modes & MODE_BICYCLE) != 0) {
-            return TraverseMode.BICYCLE;
-        }
-        if ((modes & MODE_WALK) != 0) {
-            return TraverseMode.WALK;
-        }
-        return null;
-    }
+	/**
+	 * @param restrictedModes
+	 *            A set of restricted modes
+	 * @return false If *at least one* of the non-transit mode is not
+	 *         restricted.
+	 */
+	public boolean isRestricted(Set<TraverseMode> restrictedModes) {
+		// For each non-transit mode, test if it's set and not restricted.
+		// If so, then the traverse mode set is not restricted.
+		if (getWalk() && !restrictedModes.contains(TraverseMode.WALK))
+			return false;
+		if (getBicycle() && !restrictedModes.contains(TraverseMode.BICYCLE))
+			return false;
+		if (getCar() && !restrictedModes.contains(TraverseMode.CAR))
+			return false;
+		return true;
+	}
+	
+	@Override
+	public boolean equals(Object another) {
+		if (!(another instanceof TraverseModeSet))
+			return false;
+		TraverseModeSet otherset = (TraverseModeSet)another;
+		return modes == otherset.modes;
+	}
 
 }
