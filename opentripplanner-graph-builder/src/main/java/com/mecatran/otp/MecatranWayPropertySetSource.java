@@ -524,7 +524,10 @@ public class MecatranWayPropertySetSource implements WayPropertySetSource {
 
         createNames(props, "highway=steps", "escalier");
 
-                //slope overrides
+        createNames(props, "amenity=bicycle_rental;name=*", "Location vélo {name}");
+        createNames(props, "amenity=bicycle_rental", "Station location vélo");
+
+        // Slope overrides
         props.setSlopeOverride(new OSMSpecifier("bridge=*"), true);
         props.setSlopeOverride(new OSMSpecifier("tunnel=*"), true);
 
