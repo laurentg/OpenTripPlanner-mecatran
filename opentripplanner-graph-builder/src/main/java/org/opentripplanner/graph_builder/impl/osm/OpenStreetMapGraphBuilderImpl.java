@@ -801,9 +801,6 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             for (OSMNode node : _nodes.values()) {
                 if (node.isTag("amenity", "bicycle_rental")) {
                     n++;
-                    String name = node.getTag("name");
-                    if (name == null)
-                        name = "Bike rental " + node.getId();
                     int capacity = Integer.MAX_VALUE;
                     if (node.hasTag("capacity")) {
                         try {
@@ -812,9 +809,10 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                             _log.warn("Capacity is not a number: " + node.getTag("capacity"));
                         }
                     }
+                    String creativeName = wayPropertySet.getCreativeNameForWay(node);
                     BikeRentalStationVertex station = new BikeRentalStationVertex(graph,
                             "bike rental " + node.getId(), node.getLon(), node.getLat(),
-                            "Bike rental station " + name, capacity);
+                            creativeName, capacity);
                     new RentABikeOnEdge(station, station);
                     new RentABikeOffEdge(station, station);
                 }
