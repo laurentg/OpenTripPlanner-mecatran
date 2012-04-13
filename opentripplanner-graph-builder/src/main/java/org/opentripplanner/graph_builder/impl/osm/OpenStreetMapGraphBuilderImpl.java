@@ -236,8 +236,6 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             applyBikeSafetyFactor(graph);
             StreetUtils.makeEdgeBased(graph, endpoints, turnRestrictions);
 
-            linkBikeRentalStations();
-
         } // END buildGraph()
 
         private void generateElevationProfiles(Graph graph) {
@@ -818,23 +816,6 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                 }
             }
             _log.debug("Created " + n + " bike rental stations.");
-        }
-
-        private void linkBikeRentalStations() {
-            _log.debug("Linking bike rental stations...");
-            NetworkLinkerLibrary networkLinkerLibrary = new NetworkLinkerLibrary(graph,
-                    new HashMap<Class<?>, Object>());
-            // Iterate over a copy of vertex list because it will be modified
-            ArrayList<Vertex> vertices = new ArrayList<Vertex>();
-            vertices.addAll(graph.getVertices());
-
-            for (BikeRentalStationVertex brsv : IterableLibrary.filter(vertices,
-                    BikeRentalStationVertex.class)) {
-                if (!networkLinkerLibrary.connectVertexToStreets(brsv)) {
-                    _log.warn(GraphBuilderAnnotation.register(graph,
-                            Variety.BIKE_RENTAL_STATION_UNLINKED, brsv));
-                }
-            }
         }
 
         /**
