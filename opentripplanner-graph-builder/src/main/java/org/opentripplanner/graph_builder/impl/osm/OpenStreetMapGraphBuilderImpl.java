@@ -293,12 +293,16 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                         continue;
                     }
                     if (node == null) {
-                        throw new RuntimeException("node " + nodeRef + " for area " + areaWay.getId() + " does not exist");
+                        // can happen if area is incomplete
+                        nodes.clear();
+                        break;
                     }
                     Point point = new Point(node.getLon(), node.getLat());
                     nodes.add(node);
                     vertices.add(point);
                 }
+                if (nodes.isEmpty())
+                    continue;
                 Polygon polygon = new Polygon(vertices);
 
                 if (polygon.area() < 0)
