@@ -92,7 +92,9 @@ public class Alight extends AbstractEdge implements OnBoardReverseEdge {
             if (!options.getModes().contains(hop.getMode()))
                 return null;
             TraverseMode mode = s0.getNonTransitMode(options);
-            if (mode.equals(TraverseMode.BICYCLE) && !hop.getBikesAllowed())
+            if (mode.equals(TraverseMode.CAR)
+                    || mode.equals(TraverseMode.BICYCLE)
+                    && !hop.getBikesAllowed())
                 return null;
             long current_time = s0.getTime();
 

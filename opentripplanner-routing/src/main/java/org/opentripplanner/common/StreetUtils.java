@@ -101,7 +101,7 @@ public class StreetUtils {
                         }
                         if (fromv instanceof TurnVertex) {
                             new TurnEdge((TurnVertex) fromv, (StreetVertex) tov);
-                        } else {
+                        } else if (fromv != tov) {
                             new FreeEdge(fromv, tov);
                         }
                     }
@@ -111,6 +111,7 @@ public class StreetUtils {
 
         /* remove standard graph */
         for (IntersectionVertex iv : endpoints) {
+    	    iv.removeAllEdges();
             graph.removeVertex(iv);
         }
     }

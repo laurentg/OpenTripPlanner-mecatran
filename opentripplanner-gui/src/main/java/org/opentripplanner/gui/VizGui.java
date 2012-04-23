@@ -236,6 +236,10 @@ public class VizGui extends JFrame implements VertexSelectionListener, Remaining
 
     private JCheckBox transitCheckBox;
 
+    private JCheckBox carCheckBox;
+    
+    private JCheckBox arriveByCheckBox;
+
     private JTextField searchDate;
     
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
@@ -352,11 +356,15 @@ public class VizGui extends JFrame implements VertexSelectionListener, Remaining
         searchDate.setText(dateFormat.format(new Date()));
         routingPanel.add(searchDate);        
 
-        // 2 rows: transport mode options
+        // 2 rows: arrive by + transport mode options
+        arriveByCheckBox = new JCheckBox("arrive by");
+        routingPanel.add(arriveByCheckBox);
         walkCheckBox = new JCheckBox("walk");
         routingPanel.add(walkCheckBox);
         bikeCheckBox = new JCheckBox("bike");
         routingPanel.add(bikeCheckBox);
+        carCheckBox = new JCheckBox("car");
+        routingPanel.add(carCheckBox);
         trainCheckBox = new JCheckBox("trainish");
         routingPanel.add(trainCheckBox);
         busCheckBox  = new JCheckBox("busish");
@@ -857,6 +865,7 @@ public class VizGui extends JFrame implements VertexSelectionListener, Remaining
         TraverseModeSet modeSet = new TraverseModeSet();
         modeSet.setWalk(walkCheckBox.isSelected());
         modeSet.setBicycle(bikeCheckBox.isSelected());
+        modeSet.setCar(carCheckBox.isSelected());
         modeSet.setFerry(ferryCheckBox.isSelected());
         modeSet.setTrainish(trainCheckBox.isSelected());
         modeSet.setBusish(busCheckBox.isSelected());
@@ -864,7 +873,7 @@ public class VizGui extends JFrame implements VertexSelectionListener, Remaining
         // otherwise 'false' will clear trainish and busish 
         if (transitCheckBox.isSelected())
             modeSet.setTransit(true);
-    	TraverseOptions options = new TraverseOptions(modeSet);
+        TraverseOptions options = new TraverseOptions(modeSet);
     	VisualTraverseVisitor visitor = new VisualTraverseVisitor(showGraph);
     	options.aStarSearchFactory = visitor.getAStarSearchFactory();
     	options.setWalkBoardCost(Integer.parseInt(boardingPenaltyField.getText()) * 60); // override low 2-4 minute values
@@ -873,6 +882,7 @@ public class VizGui extends JFrame implements VertexSelectionListener, Remaining
     	// there should be a ui element for walk distance and optimize type
     	options.setOptimize(OptimizeType.QUICK);
         options.setMaxWalkDistance(Double.MAX_VALUE);
+        options.setArriveBy(arriveByCheckBox.isSelected());
 
         System.out.println("--------");
         System.out.println("Path from " + from + " to " + to + " at " + when);

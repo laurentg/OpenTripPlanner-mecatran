@@ -296,9 +296,10 @@ public class GenericAStar {
             spt = _shortestPathTreeFactory.create();
 
         if (spt == null) {
-            // Use MultiShortestPathTree if transit OR bike rental.
-            if (options.getModes().getTransit() || options.getModes().getWalk()
-                            && options.getModes().getBicycle()) {
+            // Use MultiShortestPathTree if transit OR bike rental OR park and ride.
+            if (options.getModes().getTransit()
+            		        || options.getModes().getWalk() && options.getModes().getBicycle()
+            		        || options.getModes().getWalk() && options.getModes().getCar()) {
                 spt = new MultiShortestPathTree();
                 // if (options.useServiceDays)
                 options.setServiceDays(init.getTime(), graph.getAgencyIds());

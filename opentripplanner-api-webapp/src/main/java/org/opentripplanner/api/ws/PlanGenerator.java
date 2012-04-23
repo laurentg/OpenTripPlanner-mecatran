@@ -339,6 +339,11 @@ public class PlanGenerator {
                 }
                 if (mode == TraverseMode.CAR) {
                     // do nothing
+                } else if (mode == TraverseMode.WALK) {
+                    finalizeLeg(leg, state, path.states, startWalk, i, coordinates);
+                    leg = makeLeg(itinerary, state);
+                    startWalk = i;
+                    pgstate = PlanGenState.WALK;
                 } else if (mode == TraverseMode.STL) {
                     finalizeLeg(leg, state, path.states, startWalk, i, coordinates);
                     leg = null;

@@ -299,6 +299,11 @@ public class StateEditor {
     	child.stateData.bikeRenting = bikeRenting;
     }
     
+    public void setParkedCar(boolean parked) {
+    	cloneStateDataAsNeeded();
+    	child.stateData.carParked = parked;
+    }
+    
     public void setPreviousStop(Vertex previousStop) {
         cloneStateDataAsNeeded();
         child.stateData.previousStop = previousStop;
@@ -337,6 +342,7 @@ public class StateEditor {
         child.stateData.zone = state.stateData.zone;
         child.stateData.extensions = state.stateData.extensions;
         child.stateData.bikeRenting = state.stateData.bikeRenting;
+        child.stateData.carParked = state.stateData.carParked;
     }
 
     /* PUBLIC GETTER METHODS */

@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.opentripplanner.common.IterableLibrary;
+import org.geotools.geometry.Envelope2D;
 import org.opentripplanner.common.StreetUtils;
 import org.opentripplanner.common.TurnRestriction;
 import org.opentripplanner.common.TurnRestrictionType;
@@ -53,11 +53,11 @@ import org.opentripplanner.routing.edgetype.ElevatorAlightEdge;
 import org.opentripplanner.routing.edgetype.ElevatorBoardEdge;
 import org.opentripplanner.routing.edgetype.ElevatorHopEdge;
 import org.opentripplanner.routing.edgetype.FreeEdge;
+import org.opentripplanner.routing.edgetype.ParkAndRideEdge;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.RentABikeOffEdge;
 import org.opentripplanner.routing.edgetype.RentABikeOnEdge;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.opentripplanner.routing.edgetype.loader.NetworkLinkerLibrary;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
@@ -68,6 +68,7 @@ import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
 import org.opentripplanner.routing.vertextype.ElevatorOffboardVertex;
 import org.opentripplanner.routing.vertextype.ElevatorOnboardVertex;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
+import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
 import org.opentripplanner.util.MapUtils;
 import org.opentripplanner.visibility.Environment;
 import org.opentripplanner.visibility.Point;
@@ -226,7 +227,8 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             initIntersectionNodes();
 
             buildBasicGraph();
-            buildAreas();
+            buildHighwayAreas();
+            buildParkAndRideAreas();
 
             buildElevatorEdges(graph);
 
@@ -244,7 +246,6 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
 
             applyBikeSafetyFactor(graph);
             StreetUtils.makeEdgeBased(graph, endpoints, turnRestrictions);
-
         } // END buildGraph()
 
         private void generateElevationProfiles(Graph graph) {
@@ -277,8 +278,10 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             }
         }
 
-        private void buildAreas() {
+        private void buildHighwayAreas() {
             for (OSMWay areaWay : _areas.values()) {
+                if (!isHighway(areaWay))
+                    continue;
                 setWayName(areaWay);
                 // TODO: nested areas
                 List<Point> vertices = new ArrayList<Point>();
@@ -309,7 +312,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     polygon.reverse();
                 Environment areaEnv = new Environment(polygon);
 
-                VisibilityGraph vg = new VisibilityGraph(areaEnv, 0.0000001);
+                VisibilityGraph vg = new VisibilityGraph(areaEnv, 0.00000001);
                 for (int i = 0; i < nodes.size(); ++i) {
                     OSMNode nodeI = nodes.get(i);
                     for (int j = 0; j < nodes.size(); ++j) {
@@ -340,6 +343,59 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     }
                 }
             }
+        }
+        
+        private void buildParkAndRideAreas() {
+            int nParkAndRide = 0;
+            for (OSMWay areaWay : _areas.values()) {
+                if (!isParkAndRide(areaWay))
+                    continue;
+                Set<OSMNode> nodes = new HashSet<OSMNode>();
+                String id = "P+R " + areaWay.getId();
+                String creativeName = wayPropertySet.getCreativeNameForWay(areaWay);
+
+                Envelope2D envelope = null;
+                for (Long nodeRef : areaWay.getNodeRefs()) {
+                    OSMNode node = _nodes.get(nodeRef);
+                    if (node == null) {
+                        nodes.clear();
+                        break;
+                    }
+                    if (nodes.add(node)) {
+                        if (envelope == null)
+                            envelope = new Envelope2D(null, node.getLon(), node.getLat(), 0, 0);
+                        else
+                            envelope.add(node.getLon(), node.getLat());
+                    }
+                }
+                if (nodes.isEmpty()) {
+                    _log.warn("Ignoring incomplete " + id + " (" + creativeName + ")");
+                    continue;
+                }
+                // Place P+R vertex at the middle of the bounding box
+                ParkAndRideVertex parkAndRide = new ParkAndRideVertex(graph, id,
+                        envelope.getCenterX(), envelope.getCenterY(), creativeName);
+                new ParkAndRideEdge(parkAndRide);
+
+                int nAccess = 0;
+                for (OSMNode node : nodes) {
+                    IntersectionVertex accessVertex = getVertexForOsmNode(node, areaWay);
+                    if (accessVertex.getIncoming().isEmpty() && accessVertex.getOutgoing().isEmpty()) {
+                        continue;
+                    }
+                    nAccess++;
+                    new FreeEdge(parkAndRide, accessVertex);
+                    new FreeEdge(accessVertex, parkAndRide);
+                }
+                if (nAccess == 0) {
+                    _log.warn(GraphBuilderAnnotation.register(graph,
+                            Variety.PARK_AND_RIDE_UNLINKED, id, creativeName));
+                } else {
+                    nParkAndRide++;
+                    _log.debug("Created " + id + " (" + creativeName + ")");
+                }
+            }
+            _log.debug("Created " + nParkAndRide + " accessible P+R");
         }
 
         private void buildBasicGraph() {
@@ -757,7 +813,9 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             if (_ways.containsKey(way.getId()))
                 return;
             /* filter out ways that are not relevant for routing */
-            if (!(way.hasTag("highway") || way.isTag("railway", "platform")))
+            boolean isHighway = isHighway(way);
+            boolean isParkAndRide = isParkAndRide(way); 
+            if (!(isHighway || isParkAndRide))
                 return;
             String highway = way.getTag("highway");
             if (highway != null && (highway.equals("conveyer") || highway.equals("proposed") || highway.equals("raceway")))
@@ -766,8 +824,8 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                 _areas.put(way.getId(), way);
                 return;
             }
-
-            _ways.put(way.getId(), way);
+            if (isHighway)
+                _ways.put(way.getId(), way);
 
             if (_ways.size() % 10000 == 0)
                 _log.debug("ways=" + _ways.size());
@@ -859,6 +917,16 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     }
                 }
             }
+        }
+        
+        private boolean isHighway(OSMWay way) {
+            return way.hasTag("highway") || way.isTag("railway", "platform");
+        }
+        
+        private boolean isParkAndRide(OSMWay way) {
+            String parkingType = way.getTag("parking");
+            return way.isTag("amenity", "parking") && parkingType != null
+                    && parkingType.contains("park_and_ride");
         }
 
         /**

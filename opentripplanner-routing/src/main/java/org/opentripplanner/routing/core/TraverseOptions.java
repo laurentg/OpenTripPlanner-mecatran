@@ -130,7 +130,17 @@ public class TraverseOptions implements Cloneable, Serializable {
      * Cost of dropping-off a rented bike
      */
     public int bikeRentalDropoffCost = 30;
-
+    
+    /**
+     * Time to leave your car in a park and ride
+     */
+    public int parkAndRideTime = 60;
+    
+    /**
+     * Cost of leaving your car in a park and ride
+     */
+    public int parkAndRideCost = 120;
+    
     /**
      * How much worse is waiting for a transit vehicle than being on a transit vehicle, as a
      * multiplier. The default value treats wait and on-vehicle time as the same.

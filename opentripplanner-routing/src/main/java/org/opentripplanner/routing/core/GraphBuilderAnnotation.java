@@ -90,6 +90,7 @@ public class GraphBuilderAnnotation implements Serializable {
         TURN_RESTRICTION_EXCEPTION("Turn restriction with bicycle exception at node %s from %s"), 
         STOP_UNLINKED("Stop %s not near any streets; it will not be usable"), 
         BIKE_RENTAL_STATION_UNLINKED("Bike rental station %s not near any streets; it will not be usable"),
+        PARK_AND_RIDE_UNLINKED("P+R %s (%s) not linked to any streets; it will not be usable"),
         VERTEX_SHAPE_ERROR("Transit edge %s has shape geometry which is far from its "
                 + "start/end vertices.  This could be caused by bad shape geometry, or "
                 + "by incorrect use of defaultAgencyId"), 

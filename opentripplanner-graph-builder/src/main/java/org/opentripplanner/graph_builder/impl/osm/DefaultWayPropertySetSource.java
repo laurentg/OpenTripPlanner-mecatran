@@ -524,6 +524,9 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
         createNames(props, "amenity=bicycle_rental;name=*", "Bicycle rental {name}");
         createNames(props, "amenity=bicycle_rental", "Bicycle rental station");
 
+        createNames(props, "amenity=parking;name=*", "{name}");
+        createNames(props, "amenity=parking", "Park and ride");
+
         // Slope overrides
         props.setSlopeOverride(new OSMSpecifier("bridge=*"), true);
         props.setSlopeOverride(new OSMSpecifier("tunnel=*"), true);

@@ -106,7 +106,7 @@ public class Board extends AbstractEdge implements OnBoardForwardEdge {
             if (!options.getModes().contains(hop.getMode())) {
                 return null;
             }
-            if (mode.equals(TraverseMode.BICYCLE) && !hop.getBikesAllowed()) {
+            if (mode.equals(TraverseMode.CAR) || mode.equals(TraverseMode.BICYCLE) && !hop.getBikesAllowed()) {
                 return null;
             }
             if (options.wheelchairAccessible && !wheelchairAccessible) {
