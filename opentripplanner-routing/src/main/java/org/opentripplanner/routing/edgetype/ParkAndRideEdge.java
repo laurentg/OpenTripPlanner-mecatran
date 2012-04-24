@@ -53,12 +53,12 @@ public class ParkAndRideEdge extends AbstractEdge {
 			EdgeNarrative en = new FixedModeEdge(this,
 					s0.getNonTransitMode(options));
 
-			StateEditor s1 = s0.edit(this, en);
-			s1.incrementWeight(options.parkAndRideCost);
-			s1.incrementTimeInSeconds(options.parkAndRideTime);
-			s1.setParkedCar(false);
-			State s1b = s1.makeState();
-			return s1b;
+			StateEditor s1e = s0.edit(this, en);
+			s1e.incrementWeight(options.parkAndRideCost);
+			s1e.incrementTimeInSeconds(options.parkAndRideTime);
+			s1e.setCarParked(false);
+			State s1 = s1e.makeState();
+			return s1;
 		} else {
 			/*
 			 * To park a car, we need to be in one, and be able to walk afterwards.
@@ -75,7 +75,7 @@ public class ParkAndRideEdge extends AbstractEdge {
 			StateEditor s1e = s0.edit(this, en);
 			s1e.incrementWeight(options.parkAndRideCost);
 			s1e.incrementTimeInSeconds(options.parkAndRideTime);
-			s1e.setParkedCar(true);
+			s1e.setCarParked(true);
 			State s1 = s1e.makeState();
 			return s1;
 		}

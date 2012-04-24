@@ -299,7 +299,7 @@ public class StateEditor {
     	child.stateData.bikeRenting = bikeRenting;
     }
     
-    public void setParkedCar(boolean parked) {
+    public void setCarParked(boolean parked) {
     	cloneStateDataAsNeeded();
     	child.stateData.carParked = parked;
     }
