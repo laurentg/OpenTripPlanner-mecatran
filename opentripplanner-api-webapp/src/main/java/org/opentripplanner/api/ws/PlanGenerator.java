@@ -341,8 +341,10 @@ public class PlanGenerator {
                     // do nothing
                 } else if (mode == TraverseMode.WALK) {
                     finalizeLeg(leg, state, path.states, startWalk, i, coordinates);
-                    leg = makeLeg(itinerary, state);
-                    startWalk = i;
+                    // TODO: HACK ALERT: make walk portion start in next state
+                    // to make walk leg start at the parking exit.
+                    leg = makeLeg(itinerary, path.states.get(i + 2));
+                    startWalk = i + 2;
                     pgstate = PlanGenState.WALK;
                 } else if (mode == TraverseMode.STL) {
                     finalizeLeg(leg, state, path.states, startWalk, i, coordinates);
