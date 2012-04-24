@@ -54,6 +54,7 @@ import org.opentripplanner.routing.edgetype.ElevatorBoardEdge;
 import org.opentripplanner.routing.edgetype.ElevatorHopEdge;
 import org.opentripplanner.routing.edgetype.FreeEdge;
 import org.opentripplanner.routing.edgetype.ParkAndRideEdge;
+import org.opentripplanner.routing.edgetype.ParkAndRideLinkEdge;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.RentABikeOffEdge;
 import org.opentripplanner.routing.edgetype.RentABikeOnEdge;
@@ -383,9 +384,14 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     if (accessVertex.getIncoming().isEmpty() && accessVertex.getOutgoing().isEmpty()) {
                         continue;
                     }
+                    IntersectionVertex accessVertex2 = new IntersectionVertex(graph, "P+R "
+                            + accessVertex.getLabel(), accessVertex.getCoordinate(),
+                            creativeName);
                     nAccess++;
-                    new FreeEdge(parkAndRide, accessVertex);
-                    new FreeEdge(accessVertex, parkAndRide);
+                    new FreeEdge(accessVertex, accessVertex2);
+                    new FreeEdge(accessVertex2, accessVertex);
+                    new ParkAndRideLinkEdge(accessVertex2, parkAndRide);
+                    new ParkAndRideLinkEdge(parkAndRide, accessVertex2);
                 }
                 if (nAccess == 0) {
                     _log.warn(GraphBuilderAnnotation.register(graph,
@@ -717,6 +723,19 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             Set<Long> possibleIntersectionNodes = new HashSet<Long>();
             for (OSMWay way : _ways.values()) {
                 List<Long> nodes = way.getNodeRefs();
+                for (long node : nodes) {
+                    if (possibleIntersectionNodes.contains(node)) {
+                        intersectionNodes.put(node, null);
+                    } else {
+                        possibleIntersectionNodes.add(node);
+                    }
+                }
+            }
+            // Intersect ways at P+R area boundaries if needed.
+            for (OSMWay areaWay : _areas.values()) {
+                if (!isParkAndRide(areaWay))
+                    continue;
+                List<Long> nodes = areaWay.getNodeRefs();
                 for (long node : nodes) {
                     if (possibleIntersectionNodes.contains(node)) {
                         intersectionNodes.put(node, null);
