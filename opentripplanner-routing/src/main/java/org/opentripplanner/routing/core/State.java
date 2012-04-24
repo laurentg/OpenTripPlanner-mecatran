@@ -200,7 +200,10 @@ public class State implements Cloneable {
      */
     public boolean isFinal() {
         boolean parkAndRide = stateData.options.getModes().getCar() && stateData.options.getModes().getWalk();
-        return !isBikeRenting() && !(parkAndRide && !isCarParked());
+        if (stateData.options.isArriveBy())
+            return !isBikeRenting() && !(parkAndRide && isCarParked());
+        else
+            return !isBikeRenting() && !(parkAndRide && !isCarParked());
     }
     
     public Vertex getPreviousStop() {
