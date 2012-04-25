@@ -80,6 +80,7 @@ public class Shortcut extends AbstractEdge {
 
     @Override
     public State traverse(State s0) {
+    	TraverseMode traverseMode = s0.getNonTransitMode(s0.getOptions());
         if (weight == -1) {
         	Edge first, second;
         	if (s0.getOptions().isArriveBy()) {
@@ -104,7 +105,8 @@ public class Shortcut extends AbstractEdge {
         StateEditor ret = s0.edit(this);
         ret.incrementTimeInSeconds(time);
         ret.incrementWeight(weight);
-        ret.incrementWalkDistance(walkDistance);
+        if (traverseMode != TraverseMode.CAR)
+            ret.incrementWalkDistance(walkDistance);
         return ret.makeState();
     }
     

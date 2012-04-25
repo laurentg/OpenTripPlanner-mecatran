@@ -94,7 +94,8 @@ public class OutEdge extends StreetEdge {
         double speed = options.getSpeed(traverseMode);
         double time = fromv.getEffectiveLength(traverseMode) / speed;
         double weight = fromv.computeWeight(s0, options, time);
-        s1.incrementWalkDistance(fromv.getLength());
+        if (traverseMode != TraverseMode.CAR)
+            s1.incrementWalkDistance(fromv.getLength());
         s1.incrementTimeInSeconds((int) time);
         s1.incrementWeight(weight);
         if (s1.weHaveWalkedTooFar(options))

@@ -292,7 +292,8 @@ public class PlainStreetEdge extends StreetEdge {
             break;
         }
 
-        s1.incrementWalkDistance(length);
+        if (traverseMode != TraverseMode.CAR)
+            s1.incrementWalkDistance(length);
         s1.incrementTimeInSeconds((int) Math.ceil(time));
         s1.incrementWeight(weight);
         if (s1.weHaveWalkedTooFar(options))

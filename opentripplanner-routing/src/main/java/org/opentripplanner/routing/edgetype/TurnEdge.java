@@ -194,7 +194,8 @@ public class TurnEdge extends StreetEdge {
         double speed = options.getSpeed(s0.getNonTransitMode(options));
         double time = (((TurnVertex) fromv).getEffectiveLength(traverseMode) + turnCost / 20.0) / speed;
         double weight = ((TurnVertex) fromv).computeWeight(s0, options, time);
-        s1.incrementWalkDistance(((TurnVertex) fromv).getLength());
+        if (traverseMode != TraverseMode.CAR)
+            s1.incrementWalkDistance(((TurnVertex) fromv).getLength());
         s1.incrementTimeInSeconds((int) Math.ceil(time));
         s1.incrementWeight(weight);
         if (s1.weHaveWalkedTooFar(options))
