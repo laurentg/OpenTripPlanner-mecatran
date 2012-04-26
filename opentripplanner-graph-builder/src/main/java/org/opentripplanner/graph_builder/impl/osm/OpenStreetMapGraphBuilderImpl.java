@@ -839,7 +839,8 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             String highway = way.getTag("highway");
             if (highway != null && (highway.equals("conveyer") || highway.equals("proposed") || highway.equals("raceway")))
                 return;
-            if (way.isTag("area", "yes") && way.getNodeRefs().size() > 2) {
+            if (way.isTag("area", "yes") && way.getNodeRefs().size() > 2
+                    && !way.isTag("railway", "platform")) {
                 _areas.put(way.getId(), way);
                 return;
             }
