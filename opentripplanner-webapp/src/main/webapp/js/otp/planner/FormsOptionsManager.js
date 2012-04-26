@@ -105,9 +105,9 @@ otp.planner.FormsOptionsManagerStatic = {
             if(this.maxWalk)    this.hideComboBox(this.maxWalk, false);
         } else {
             if(this.maxWalk)    this.hideComboBox(this.maxWalk, false);
-            if(this.wheelchair) this.hideComboBox(this.wheelchair, true);
         }
         if (this.isBike(mode)) {
+            if(this.wheelchair) this.hideComboBox(this.wheelchair, true);
             showBikeOptions = true;
 
             // save off old walk distance value -- used to reset the system (see above)
