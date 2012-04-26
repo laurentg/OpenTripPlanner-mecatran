@@ -223,14 +223,15 @@ public class TurnVertex extends StreetVertex {
 
     public double computeWeight(State s0, TraverseOptions options, double time) {
         double weight;
-        double speed = options.getSpeed(s0.getNonTransitMode(options));
+        TraverseMode traverseMode = s0.getNonTransitMode(options); 
+        double speed = options.getSpeed(traverseMode);
         if (options.wheelchairAccessible) {
             // in fact, a wheelchair user will probably be going slower
             // than a cyclist, having less wind resistance, but will have
             // a stronger preference for less work. Maybe it
             // evens out?
             weight = slopeSpeedEffectiveLength / speed;
-        } else if (s0.getNonTransitMode(options).equals(TraverseMode.BICYCLE)) {
+        } else if (traverseMode == TraverseMode.BICYCLE) {
             switch (options.optimizeFor) {
             case SAFE:
                 weight = bicycleSafetyEffectiveLength / speed;
@@ -259,6 +260,13 @@ public class TurnVertex extends StreetVertex {
                 break;
             default:
                 weight = length / speed;
+            }
+        } else if (traverseMode == TraverseMode.CAR) {
+            // Even if CAR is faster, when choosing P+R we strongly favor transit 
+            if (options.getModes().getTransit()) {
+                weight = time * options.carOverTransitReluctance;
+            } else {
+                weight = time;
             }
         } else {
             weight = time;

@@ -84,6 +84,11 @@ public class TraverseOptions implements Cloneable, Serializable {
 
     /** Used instead of walk reluctance for stairs */
     public double stairsReluctance = 2.0;
+    
+    /**
+     * How much worse driving is over transit when both mode are used (P+R), as a time-multiplier.
+     */
+    public double carOverTransitReluctance = 10.0;
 
     /**
      * How long does it take to get an elevator, on average (actually, it probably should 
