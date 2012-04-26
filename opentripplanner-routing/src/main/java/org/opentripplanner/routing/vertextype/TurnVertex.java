@@ -262,8 +262,8 @@ public class TurnVertex extends StreetVertex {
                 weight = length / speed;
             }
         } else if (traverseMode == TraverseMode.CAR) {
-            // Even if CAR is faster, when choosing P+R we strongly favor transit 
-            if (options.getModes().getTransit()) {
+            // Even if CAR is faster, when choosing P+R we strongly favor transit/bike
+            if (options.getModes().getTransit() || options.getModes().getBicycle()) {
                 weight = time * options.carOverTransitReluctance;
             } else {
                 weight = time;

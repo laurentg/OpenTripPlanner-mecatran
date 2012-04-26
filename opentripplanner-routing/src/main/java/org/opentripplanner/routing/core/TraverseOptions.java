@@ -88,7 +88,7 @@ public class TraverseOptions implements Cloneable, Serializable {
     /**
      * How much worse driving is over transit when both mode are used (P+R), as a time-multiplier.
      */
-    public double carOverTransitReluctance = 10.0;
+    public double carOverTransitReluctance = 20.0;
 
     /**
      * How long does it take to get an elevator, on average (actually, it probably should 
