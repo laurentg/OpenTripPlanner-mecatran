@@ -143,25 +143,6 @@ public class NetworkLinkerLibrary {
         }
     }
 
-    /**
-     * The entry point for networklinker to link each bike rental station.
-     * 
-     * @param v
-     * @return true if the links were successfully added, otherwise false
-     */
-    public boolean connectVertexToStreets(BikeRentalStationVertex v) {
-        Collection<StreetVertex> nearbyStreetVertices = getNearbyStreetVertices(v, null);
-        if (nearbyStreetVertices == null) {
-            return false;
-        } else {
-            for (StreetVertex sv : nearbyStreetVertices) {
-                new StreetBikeRentalLink(sv, v);
-                new StreetBikeRentalLink(v, sv);
-            }
-            return true;
-        }
-    }
-
 //    /**
 //     * Add edges from street locations to the target vertex.
 //     * 
