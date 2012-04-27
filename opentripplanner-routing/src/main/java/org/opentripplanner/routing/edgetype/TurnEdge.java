@@ -307,7 +307,7 @@ public class TurnEdge extends StreetEdge {
     
     @Override
     public double timeLowerBound(TraverseOptions options) {
-        return (((TurnVertex) fromv).getLength() + turnCost/20) / options.getSpeedHigherBound();
+        return (((TurnVertex) fromv).getLength() + turnCost/20) / options.getSpeedUpperBound();
     }
     
 	    private void writeObject(ObjectOutputStream out) throws IOException, ClassNotFoundException {

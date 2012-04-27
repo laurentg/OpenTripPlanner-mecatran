@@ -23,6 +23,7 @@ import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.StateEditor;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseOptions;
+import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.patch.Alert;
 import org.opentripplanner.routing.util.ElevationUtils;
 import org.opentripplanner.routing.util.SlopeCosts;
@@ -130,7 +131,7 @@ public class PlainStreetEdge extends StreetEdge {
         }
         return false;
     }
-    
+
     private boolean canTraverse(TraverseOptions options, TraverseMode mode) {
         if (options.wheelchairAccessible) {
             if (!wheelchairAccessible) {
@@ -168,12 +169,13 @@ public class PlainStreetEdge extends StreetEdge {
 
         elevationProfile = elev;
 
-        //compute the various costs of the elevation changes
+        // compute the various costs of the elevation changes
         double lengthMultiplier = ElevationUtils.getLengthMultiplierFromElevation(elev);
         length *= lengthMultiplier;
         bicycleSafetyEffectiveLength *= lengthMultiplier;
 
-        SlopeCosts costs = ElevationUtils.getSlopeCosts(elev, permission.allows(StreetTraversalPermission.CAR));
+        SlopeCosts costs = ElevationUtils.getSlopeCosts(elev,
+                permission.allows(StreetTraversalPermission.CAR));
         slopeSpeedEffectiveLength = costs.slopeSpeedEffectiveLength;
         maxSlope = costs.maxSlope;
         slopeWorkCost = costs.slopeWorkCost;
@@ -207,10 +209,10 @@ public class PlainStreetEdge extends StreetEdge {
     }
 
     private State doTraverse(State s0, TraverseOptions options) {
-    	TraverseMode traverseMode = s0.getNonTransitMode(options);
+        TraverseMode traverseMode = s0.getNonTransitMode(options);
         if (!canTraverse(options, traverseMode)) {
             if (traverseMode == TraverseMode.BICYCLE) {
-            	// try walking bike since you can't ride here
+                // try walking bike since you can't ride here
                 return doTraverse(s0, options.getWalkingOptions());
             }
             return null;
@@ -224,13 +226,13 @@ public class PlainStreetEdge extends StreetEdge {
             time = slopeSpeedEffectiveLength / speed;
             switch (options.optimizeFor) {
             case SAFE:
-            	weight = bicycleSafetyEffectiveLength / speed;
-            	break;
-            case GREENWAYS:            	
+                weight = bicycleSafetyEffectiveLength / speed;
+                break;
+            case GREENWAYS:
                 weight = bicycleSafetyEffectiveLength / speed;
                 if (bicycleSafetyEffectiveLength / length <= TurnVertex.GREENWAY_SAFETY_FACTOR) {
-                	//greenways are treated as even safer than they really are
-                	weight *= 0.66;
+                    // greenways are treated as even safer than they really are
+                    weight *= 0.66;
                 }
                 break;
             case FLAT:
@@ -244,7 +246,9 @@ public class PlainStreetEdge extends StreetEdge {
                 double quick = slopeSpeedEffectiveLength;
                 double safety = bicycleSafetyEffectiveLength;
                 double slope = slopeWorkCost;
-                weight = quick * options.getTriangleTimeFactor() + slope * options.getTriangleSlopeFactor() + safety * options.getTriangleSafetyFactor();
+                weight = quick * options.getTriangleTimeFactor() + slope
+                        * options.getTriangleSlopeFactor() + safety
+                        * options.getTriangleSafetyFactor();
                 weight /= speed;
                 break;
             default:
@@ -298,7 +302,7 @@ public class PlainStreetEdge extends StreetEdge {
         s1.incrementWeight(weight);
         if (s1.weHaveWalkedTooFar(options))
             return null;
-        
+
         return s1.makeState();
     }
 
@@ -306,12 +310,12 @@ public class PlainStreetEdge extends StreetEdge {
     public double weightLowerBound(TraverseOptions options) {
         return timeLowerBound(options) * options.walkReluctance;
     }
-    
+
     @Override
     public double timeLowerBound(TraverseOptions options) {
-        return this.length / options.getSpeedHigherBound();
+        return this.length / options.getSpeedUpperBound();
     }
-        
+
     public void setSlopeSpeedEffectiveLength(double slopeSpeedEffectiveLength) {
         this.slopeSpeedEffectiveLength = slopeSpeedEffectiveLength;
     }
@@ -441,5 +445,26 @@ public class PlainStreetEdge extends StreetEdge {
 
     public Set<Alert> getWheelchairNotes() {
         return wheelchairNotes;
+    }
+
+    public TurnVertex createTurnVertex(Graph graph) {
+        String id = getId();
+        TurnVertex tv = new TurnVertex(graph, id, getGeometry(), getName(), getLength(), back,
+                getNotes());
+        tv.setWheelchairNotes(getWheelchairNotes());
+        tv.setWheelchairAccessible(isWheelchairAccessible());
+        tv.setBicycleSafetyEffectiveLength(getBicycleSafetyEffectiveLength());
+        tv.setCrossable(isCrossable());
+        tv.setPermission(getPermission());
+        tv.setSlopeOverride(getSlopeOverride());
+        // the only cases where there will already be an elevation profile are those where it came
+        // from
+        // the street network (osm ele tags, for instance), so it's OK to force it here.
+        tv.setElevationProfile(getElevationProfile(), true);
+        tv.setRoundabout(isRoundabout());
+        tv.setBogusName(hasBogusName());
+        tv.setNoThruTraffic(isNoThruTraffic());
+        tv.setStairs(isStairs());
+        return tv;
     }
 }

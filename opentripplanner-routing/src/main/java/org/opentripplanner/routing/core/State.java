@@ -85,7 +85,7 @@ public class State implements Cloneable {
         stateData.options = opt;
         stateData.startTime = time;
         stateData.tripSeqHash = 0;
-        stateData.bikeRenting = false;
+        stateData.usingRentedBike = false;
         stateData.carParked = opt != null && opt.isArriveBy()
                 && opt.getModes().getCar() && opt.getModes().getWalk();
         // System.out.printf("new state %d %s %s \n", this.time, this.vertex, stateData.options);
@@ -188,12 +188,12 @@ public class State implements Cloneable {
         return stateData.everBoarded;
     }
     
-    public boolean isBikeRenting() {
-        return stateData.bikeRenting;
-    }
-    
     public boolean isCarParked() {
         return stateData.carParked;
+    }
+
+    public boolean isBikeRenting() {
+        return stateData.usingRentedBike;
     }
 
     /**
@@ -354,17 +354,17 @@ public class State implements Cloneable {
     public TraverseOptions getOptions() {
         return stateData.options;
     }
-    
+
     public TraverseMode getNonTransitMode(TraverseOptions options) {
-    	TraverseModeSet modes = options.getModes();
-    	if (modes.getCar() && !isCarParked())
+        TraverseModeSet modes = options.getModes();
+        if (modes.getCar() && !isCarParked())
             return TraverseMode.CAR;
-    	if (modes.getWalk() && !isBikeRenting())
+        if (modes.getWalk() && !isBikeRenting())
             return TraverseMode.WALK;
-    	if (modes.getBicycle())
-    		return TraverseMode.BICYCLE;
-    	// Can happen for walking options of a bike mode or park&ride
-    	return TraverseMode.WALK;
+        if (modes.getBicycle())
+            return TraverseMode.BICYCLE;
+
+        return null;
     }
 
     public State reversedClone() {
@@ -404,7 +404,7 @@ public class State implements Cloneable {
 
     public boolean multipleOptionsBefore() {
         boolean foundAlternatePaths = false;
-        TraverseMode requestedMode = getNonTransitMode(getOptions()); 
+        TraverseMode requestedMode = getNonTransitMode(getOptions());
         for (Edge out : backState.vertex.getOutgoing()) {
             if (out == backEdge) {
                 continue;

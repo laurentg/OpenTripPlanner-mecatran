@@ -293,15 +293,15 @@ public class TraverseModeSet implements Cloneable, Serializable {
             modes &= ~MODE_TRANSIT;
         }
     }
-    
+
     /** Returns a TraverseModeSet containing only the non-transit modes set. */
     public TraverseModeSet getNonTransitSet() {
-    	TraverseModeSet retval = new TraverseModeSet();
-    	retval.modes = modes;
-    	retval.setTransit(false);
-    	return retval;
+        TraverseModeSet retval = new TraverseModeSet();
+        retval.modes = modes;
+        retval.setTransit(false);
+        return retval;
     }
-    
+
     /** Returns true if any the trip may use some train-like (train, subway, tram) mode */
     public boolean getTraininsh() {
         return (modes & (MODE_TRAINISH)) != 0;
@@ -341,41 +341,39 @@ public class TraverseModeSet implements Cloneable, Serializable {
         }
         return "TraverseMode (" + out + ")";
     }
-    
+
     @Override
     public TraverseModeSet clone() {
         try {
             return (TraverseModeSet) super.clone();
         } catch (CloneNotSupportedException e) {
             /* this will never happen since our super is the cloneable object */
-            throw new RuntimeException(e); 
+            throw new RuntimeException(e);
         }
     }
 
-	/**
-	 * @param restrictedModes
-	 *            A set of restricted modes
-	 * @return false If *at least one* of the non-transit mode is not
-	 *         restricted.
-	 */
-	public boolean isRestricted(Set<TraverseMode> restrictedModes) {
-		// For each non-transit mode, test if it's set and not restricted.
-		// If so, then the traverse mode set is not restricted.
-		if (getWalk() && !restrictedModes.contains(TraverseMode.WALK))
-			return false;
-		if (getBicycle() && !restrictedModes.contains(TraverseMode.BICYCLE))
-			return false;
-		if (getCar() && !restrictedModes.contains(TraverseMode.CAR))
-			return false;
-		return true;
-	}
-	
-	@Override
-	public boolean equals(Object another) {
-		if (!(another instanceof TraverseModeSet))
-			return false;
-		TraverseModeSet otherset = (TraverseModeSet)another;
-		return modes == otherset.modes;
-	}
+    /**
+     * @param restrictedModes A set of restricted modes
+     * @return false If *at least one* of the non-transit mode is not restricted.
+     */
+    public boolean isRestricted(Set<TraverseMode> restrictedModes) {
+        // For each non-transit mode, test if it's set and not restricted.
+        // If so, then the traverse mode set is not restricted.
+        if (getWalk() && !restrictedModes.contains(TraverseMode.WALK))
+            return false;
+        if (getBicycle() && !restrictedModes.contains(TraverseMode.BICYCLE))
+            return false;
+        if (getCar() && !restrictedModes.contains(TraverseMode.CAR))
+            return false;
+        return true;
+    }
+
+    @Override
+    public boolean equals(Object another) {
+        if (!(another instanceof TraverseModeSet))
+            return false;
+        TraverseModeSet otherset = (TraverseModeSet) another;
+        return modes == otherset.modes;
+    }
 
 }

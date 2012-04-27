@@ -20,6 +20,7 @@ import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseOptions;
 import org.opentripplanner.routing.graph.AbstractEdge;
 import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
 
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -38,46 +39,52 @@ public abstract class RentABikeAbstractEdge extends AbstractEdge {
 	}
 
 	protected State traverseRent(State s0) {
-		TraverseOptions options = s0.getOptions();
-		/*
-		 * If we already have a bike (rented or own) we won't go any faster by
-		 * having a second one.
-		 */
-		if (!s0.getNonTransitMode(options).equals(TraverseMode.WALK))
-			return null;
-		/*
-		 * To rent a bike, we need to have BICYCLE in allowed modes.
-		 */
-		if (!options.getModes().contains(TraverseMode.BICYCLE))
-			return null;
-		EdgeNarrative en = new FixedModeEdge(this,
-				s0.getNonTransitMode(options));
+            TraverseOptions options = s0.getOptions();
+            /*
+             * If we already have a bike (rented or own) we won't go any faster by having a second
+             * one.
+             */
+            if (!s0.getNonTransitMode(options).equals(TraverseMode.WALK))
+                return null;
+            /*
+             * To rent a bike, we need to have BICYCLE in allowed modes.
+             */
+            if (!options.getModes().contains(TraverseMode.BICYCLE))
+                return null;
+            
+            BikeRentalStationVertex dropoff = (BikeRentalStationVertex) tov;
+            if (options.useBikeRentalAvailabilityInformation() && dropoff.getBikesAvailable() == 0) {
+                return null;
+            }
+            EdgeNarrative en = new FixedModeEdge(this, s0.getNonTransitMode(options));
 
-		StateEditor s1 = s0.edit(this, en);
-		s1.incrementWeight(options.bikeRentalPickupCost);
-		s1.incrementTimeInSeconds(options.bikeRentalPickupTime);
-		s1.setBikeRenting(true);
-		State s1b = s1.makeState();
-		return s1b;
+            StateEditor s1 = s0.edit(this, en);
+            s1.incrementWeight(options.bikeRentalPickupCost);
+            s1.incrementTimeInSeconds(options.bikeRentalPickupTime);
+            s1.setBikeRenting(true);
+            State s1b = s1.makeState();
+            return s1b;
 	}
 
 	protected State traverseDropoff(State s0) {
-		TraverseOptions options = s0.getOptions();
+            TraverseOptions options = s0.getOptions();
+            /*
+             * To dropoff a bike, we need to have rented one.
+             */
+            if (!s0.isBikeRenting())
+                return null;
+            BikeRentalStationVertex pickup = (BikeRentalStationVertex) tov;
+            if (options.useBikeRentalAvailabilityInformation() && pickup.getSpacesAvailable() == 0) {
+                return null;
+            }
+            EdgeNarrative en = new FixedModeEdge(this, s0.getNonTransitMode(options));
 
-		/*
-		 * To dropoff a bike, we need to have rented one.
-		 */
-		if (!s0.isBikeRenting())
-			return null;
-		EdgeNarrative en = new FixedModeEdge(this,
-				s0.getNonTransitMode(options));
-
-		StateEditor s1e = s0.edit(this, en);
-		s1e.incrementWeight(options.bikeRentalDropoffCost);
-		s1e.incrementTimeInSeconds(options.bikeRentalDropoffTime);
-		s1e.setBikeRenting(false);
-		State s1 = s1e.makeState();
-		return s1;
+            StateEditor s1e = s0.edit(this, en);
+            s1e.incrementWeight(options.bikeRentalDropoffCost);
+            s1e.incrementTimeInSeconds(options.bikeRentalDropoffTime);
+            s1e.setBikeRenting(false);
+            State s1 = s1e.makeState();
+            return s1;
 	}
 
 	@Override

@@ -264,10 +264,10 @@ public class Polygon {
         int n = n();
         if (n > 2) {
             // reverse, leaving the first point in its place
-            for (int i = 0; i < n / 2; ++i) {
-                Point temp = vertices.get(i + 1);
-                vertices.set(i + 1, vertices.get((n - i) - 1));
-                vertices.set((n - i) - 1, temp);
+            for (int i = 1; i < (n+1) / 2; ++i) {
+                Point temp = vertices.get(i);
+                vertices.set(i, vertices.get((n - i)));
+                vertices.set((n - i), temp);
             }
         }
     }
@@ -285,7 +285,11 @@ public class Polygon {
         return true;
     }
 
-    Point get(int i) {
+    public int hashCode() {
+        return vertices.hashCode() + 1;
+    }
+
+    public Point get(int i) {
         return vertices.get(i % vertices.size());
     }
 
@@ -339,6 +343,15 @@ public class Polygon {
         for (int i = 0; i < n(); i++)
             outs += get(i) + "\n";
         return outs;
+    }
+
+    public boolean hasPointInside(Polygon container) {
+        for (Point point : vertices) {
+            if (point.in(container)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

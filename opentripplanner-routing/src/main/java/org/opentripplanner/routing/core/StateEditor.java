@@ -293,13 +293,13 @@ public class StateEditor {
     }
 
     public void setBikeRenting(boolean bikeRenting) {
-    	cloneStateDataAsNeeded();
-    	child.stateData.bikeRenting = bikeRenting;
+        cloneStateDataAsNeeded();
+        child.stateData.usingRentedBike = bikeRenting;
     }
-    
+
     public void setCarParked(boolean parked) {
-    	cloneStateDataAsNeeded();
-    	child.stateData.carParked = parked;
+        cloneStateDataAsNeeded();
+        child.stateData.carParked = parked;
     }
     
     public void setPreviousStop(Vertex previousStop) {
@@ -339,7 +339,7 @@ public class StateEditor {
         child.stateData.tripId = state.stateData.tripId;
         child.stateData.zone = state.stateData.zone;
         child.stateData.extensions = state.stateData.extensions;
-        child.stateData.bikeRenting = state.stateData.bikeRenting;
+        child.stateData.usingRentedBike = state.stateData.bikeRenting;
         child.stateData.carParked = state.stateData.carParked;
     }
 
@@ -389,9 +389,9 @@ public class StateEditor {
     public boolean isEverBoarded() {
         return child.isEverBoarded();
     }
-    
+
     public boolean isRentingBike() {
-    	return child.isBikeRenting();
+        return child.isBikeRenting();
     }
 
     public Vertex getPreviousStop() {

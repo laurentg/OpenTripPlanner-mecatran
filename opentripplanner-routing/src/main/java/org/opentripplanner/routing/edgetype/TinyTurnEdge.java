@@ -46,9 +46,11 @@ public class TinyTurnEdge extends FreeEdge {
         if (mode == TraverseMode.WALK && permission.allows(StreetTraversalPermission.PEDESTRIAN)) {
             return true;
         }
+
         if (mode == TraverseMode.BICYCLE && permission.allows(StreetTraversalPermission.BICYCLE)) {
             return true;
         }
+
         if (mode == TraverseMode.CAR && permission.allows(StreetTraversalPermission.CAR)) {
             return true;
         }
@@ -82,11 +84,12 @@ public class TinyTurnEdge extends FreeEdge {
         if (turnRestricted(s0, options) && !options.getModes().getWalk()) {
             return null;
         }
-        double speed = options.getSpeed(s0.getNonTransitMode(options));
+        TraverseMode traverseMode = s0.getNonTransitMode(options);
+        double speed = options.getSpeed(traverseMode);
         double angleLength = turnCost / 20.0;
         double time = angleLength / speed;
         double weight = time * options.walkReluctance + turnCost / 20;
-        EdgeNarrative en = new FixedModeEdge(this, s0.getNonTransitMode(s0.getOptions()));
+        EdgeNarrative en = new FixedModeEdge(this, traverseMode);
         StateEditor s1 = s0.edit(this, en);
         s1.incrementWeight(weight);
         s1.incrementTimeInSeconds((int) Math.ceil(time));

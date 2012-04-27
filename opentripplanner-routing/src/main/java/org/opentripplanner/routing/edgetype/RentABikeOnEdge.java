@@ -15,7 +15,7 @@ package org.opentripplanner.routing.edgetype;
 
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseOptions;
-import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
 
 /**
  * Renting a bike edge.
@@ -27,32 +27,31 @@ import org.opentripplanner.routing.graph.Vertex;
  */
 public class RentABikeOnEdge extends RentABikeAbstractEdge {
 
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	public RentABikeOnEdge(Vertex from, Vertex to) {
-		super(from, to);
-	}
+    public RentABikeOnEdge(BikeRentalStationVertex from, BikeRentalStationVertex to) {
+        super(from, to);
+    }
 
-	@Override
-	public State traverse(State s0) {
-		TraverseOptions options = s0.getOptions();
-		if (options.isArriveBy()) {
-			return super.traverseDropoff(s0);
-		} else {
-			return super.traverseRent(s0);
-		}
-	}
+    @Override
+    public State traverse(State s0) {
+        TraverseOptions options = s0.getOptions();
+        if (options.isArriveBy()) {
+            return super.traverseDropoff(s0);
+        } else {
+            return super.traverseRent(s0);
+        }
+    }
 
-	public boolean equals(Object o) {
-		if (o instanceof RentABikeOnEdge) {
-			RentABikeOnEdge other = (RentABikeOnEdge) o;
-			return other.getFromVertex().equals(fromv)
-					&& other.getToVertex().equals(tov);
-		}
-		return false;
-	}
+    public boolean equals(Object o) {
+        if (o instanceof RentABikeOnEdge) {
+            RentABikeOnEdge other = (RentABikeOnEdge) o;
+            return other.getFromVertex().equals(fromv) && other.getToVertex().equals(tov);
+        }
+        return false;
+    }
 
-	public String toString() {
-		return "RentABikeOnEdge(" + fromv + " -> " + tov + ")";
-	}
+    public String toString() {
+        return "RentABikeOnEdge(" + fromv + " -> " + tov + ")";
+    }
 }

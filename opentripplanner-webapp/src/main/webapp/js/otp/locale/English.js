@@ -46,13 +46,13 @@ otp.locale.English = {
     // TODO Localize Me
     bikeTriangle : 
     {
-        safeName : "Safest",
-        safeSym  : "S",
+        safeName : "Bike friendly",
+        safeSym  : "B",
 
-        hillName : "Flattest",
+        hillName : "Flat",
         hillSym  : "F",
 
-        timeName : "Quickest",
+        timeName : "Quick",
         timeSym  : "Q"
     },
 
@@ -223,8 +223,8 @@ otp.locale.English = {
         second_abbrev  : "sec",
         seconds_abbrev : "secs",
         format         : "F jS, Y @ g:ia",
-        date_format    : "m-d-Y",
-        time_format    : "g:ia",
+        date_format    : "n/j/Y",
+        time_format    : "g:i a",
         months         : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     },
 
@@ -321,8 +321,8 @@ otp.locale.English = {
         options: 
         [
           ['TRANSFERS', 'Fewest transfers'],
-          ['QUICK',     'Quickest trip'],
-          ['SAFE',      'Safest trip'],
+          ['QUICK',     'Quick trip'],
+          ['SAFE',      'Bike friendly trip'],
           ['TRIANGLE',  'Custom trip...']
         ],
     
