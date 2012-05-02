@@ -297,7 +297,7 @@ public class TraverseOptions implements Cloneable, Serializable {
         // http://en.wikipedia.org/wiki/Walking
         walkSpeed = 1.33; // 1.33 m/s ~ 3mph, avg. human speed
         bikeSpeed = 5; // 5 m/s, ~11 mph, a random bicycling speed.
-        carSpeed = 15; // 15 m/s, ~35 mph, a random driving speed
+        carSpeed = 10; // 10 m/s, ~22 mph, a random driving speed
         setModes(new TraverseModeSet(new TraverseMode[] { TraverseMode.WALK, TraverseMode.TRANSIT }));
         calendar = Calendar.getInstance();
         walkingOptions = this;
