@@ -726,19 +726,6 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             }
         }
 
-        class ListedEdgesOnly implements SkipEdgeStrategy {
-            private Set<Edge> edges;
-            public ListedEdgesOnly(Set<Edge> edges) {
-                this.edges = edges;
-            }
-            @Override
-            public boolean shouldSkipEdge(Vertex origin, Vertex target, State current, Edge edge,
-                    ShortestPathTree spt, TraverseOptions traverseOptions) {
-                return !edges.contains(edge);
-            }
-
-        }
-        
         private void buildParkAndRideAreas() {
             int nParkAndRide = 0;
             for (Area area : _areas) {
@@ -833,6 +820,18 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             return areas.size() > 1;
         }
 
+        class ListedEdgesOnly implements SkipEdgeStrategy {
+            private Set<Edge> edges;
+            public ListedEdgesOnly(Set<Edge> edges) {
+                this.edges = edges;
+            }
+            @Override
+            public boolean shouldSkipEdge(Vertex origin, Vertex target, State current, Edge edge,
+                    ShortestPathTree spt, TraverseOptions traverseOptions) {
+                return !edges.contains(edge);
+            }
+
+        }
         /** 
          * Do an all-pairs shortest path search from a list of vertices over a specified
          * set of edges, and retain only those edges which are actually used in some
@@ -1325,7 +1324,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                 return;
             }
             if (isRouteable)
-                _ways.put(way.getId(), way);
+                _ways.put(wayId, way);
 
             if (_ways.size() % 10000 == 0)
                 _log.debug("ways=" + _ways.size());
