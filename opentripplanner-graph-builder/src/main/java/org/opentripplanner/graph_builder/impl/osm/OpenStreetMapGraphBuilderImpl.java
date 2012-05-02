@@ -781,6 +781,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     }
                 }
             }
+            _log.info("Created " + nParkAndRide + " P+R.");
         }
 
         private void standardize(ArrayList<Point> vertices, List<OSMNode> nodes) {
