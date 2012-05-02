@@ -49,6 +49,8 @@ public class StreamedFileBasedOpenStreetMapProviderImpl implements OpenStreetMap
 
                 in = new GZIPInputStream(new FileInputStream(_path));
                 StreamedOpenStreetMapParser.parseMap(in, handler, 3);
+
+                handler.nodesLoaded();
             } else if (_path.getName().endsWith(".bz2")) {
                 InputStream in = new BZip2CompressorInputStream(new FileInputStream(_path));
                 StreamedOpenStreetMapParser.parseMap(in, handler, 1);
@@ -62,6 +64,8 @@ public class StreamedFileBasedOpenStreetMapProviderImpl implements OpenStreetMap
 
                 in = new BZip2CompressorInputStream(new FileInputStream(_path));
                 StreamedOpenStreetMapParser.parseMap(in, handler, 3);
+                
+                handler.nodesLoaded();
             } else {
                 StreamedOpenStreetMapParser.parseMap(_path, handler);
             }
@@ -76,5 +80,12 @@ public class StreamedFileBasedOpenStreetMapProviderImpl implements OpenStreetMap
 
     public String toString() {
         return "StreamedFileBasedOpenStreetMapProviderImpl(" + _path + ")";
+    }
+
+    @Override
+    public void checkInputs() {
+        if (!_path.canRead()) {
+            throw new RuntimeException("Can't read OSM path: " + _path);
+        }
     }
 }
