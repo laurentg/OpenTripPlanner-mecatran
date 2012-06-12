@@ -14,6 +14,7 @@
 package org.opentripplanner.api.ws;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -294,6 +295,14 @@ public class Request implements RequestInf {
         paramPush(DATE, date);
         paramPush(TIME, time);
         dateTime = DateUtils.toDate(date, time);
+        // HACK ALERT -- TODO REPLACE THIS TEMPORARY CRAP
+        // Our server is in UTC, convert from default client TZ to UTC
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Europe/Paris"));
+        cal.setTime(dateTime);
+        int dstOffset = cal.get(Calendar.DST_OFFSET);
+        int zoneOffset = cal.get(Calendar.ZONE_OFFSET);
+        dateTime.setTime(dateTime.getTime() - dstOffset - zoneOffset);
+        // END OF HACK ALERT ZONE
         LOG.debug("JVM default timezone is {}", TimeZone.getDefault());
         LOG.debug("Request datetime parsed as {}", dateTime);
     }
