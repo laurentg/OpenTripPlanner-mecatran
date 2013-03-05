@@ -17,7 +17,7 @@ import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.StateEditor;
 import org.opentripplanner.routing.core.TransferTable;
 import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseOptions;
+import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.opentripplanner.routing.vertextype.TransitStopDepart;
 
@@ -42,7 +42,7 @@ public class PreBoardEdge extends FreeEdge {
 
     @Override
     public State traverse(State s0) {
-        TraverseOptions options = s0.getOptions();
+        RoutingRequest options = s0.getOptions();
         if (options.isArriveBy()) {
             /* Traverse backward: not much to do */
             StateEditor s1 = s0.edit(this);
@@ -51,8 +51,10 @@ public class PreBoardEdge extends FreeEdge {
                 s1.setAlightedLocal(true);
             }
 
-            s1.incrementTimeInSeconds(options.minTransferTime / 2);
+            //apply board slack
+            s1.incrementTimeInSeconds(options.getBoardSlack());
             s1.alightTransit();
+            s1.setBackMode(getMode());
             return s1.makeState();
         } else {
             /* Traverse forward: apply stop(pair)-specific costs */
@@ -60,13 +62,9 @@ public class PreBoardEdge extends FreeEdge {
             // Do not pre-board if transit modes are not selected.
             // Return null here rather than in StreetTransitLink so that walk-only
             // options can be used to find transit stops without boarding vehicles.
-            if (!options.getModes().getTransit())
+            if (!options.getModes().isTransit())
                 return null;
 
-            // Do not board if the passenger has alighted from a local stop
-            if (s0.isAlightedLocal()) {
-                return null;
-            }
             TransitStop fromVertex = (TransitStop) getFromVertex();
             // Do not board once one has alighted from a local stop
             if (fromVertex.isLocal() && s0.isEverBoarded()) {
@@ -81,11 +79,18 @@ public class PreBoardEdge extends FreeEdge {
              * look in the global transfer table for the rules from the previous stop to this stop.
              */
             long t0 = s0.getTime();
-            long board_after = t0 + options.minTransferTime / 2;
+
+            long slack;
+            if (s0.isEverBoarded()) {
+                slack = options.getTransferSlack() - options.getAlightSlack();
+            } else {
+                slack = options.getBoardSlack();
+            }
+            long board_after = t0 + slack;
             long transfer_penalty = 0;
             if (s0.getLastAlightedTime() != 0) {
                 /* this is a transfer rather than an initial boarding */
-                TransferTable transferTable = options.getTransferTable();
+                TransferTable transferTable = s0.getContext().transferTable;
                 if (transferTable.hasPreferredTransfers()) {
                     // only penalize transfers if there are some that will be depenalized
                     transfer_penalty = options.nonpreferredTransferPenalty;
@@ -132,6 +137,7 @@ public class PreBoardEdge extends FreeEdge {
             s1.setEverBoarded(true);
             long wait_cost = board_after - t0;
             s1.incrementWeight(wait_cost + transfer_penalty);
+            s1.setBackMode(getMode());
             return s1.makeState();
         }
     }
@@ -144,6 +150,7 @@ public class PreBoardEdge extends FreeEdge {
         // do not include minimum transfer time in heuristic weight
         // (it is path-dependent)
         StateEditor s1 = s0.edit(this);
+        s1.setBackMode(getMode());
         return s1.makeState();
     }
 

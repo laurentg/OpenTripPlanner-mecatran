@@ -20,13 +20,13 @@ import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.opentripplanner.common.geometry.DistanceLibrary;
+import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.StateEditor;
 import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseOptions;
-import org.opentripplanner.routing.graph.AbstractEdge;
+import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.graph.AbstractVertex;
+import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.location.StreetLocation;
@@ -34,7 +34,7 @@ import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineString;
 
 public class AStarTest {
 
@@ -94,11 +94,10 @@ public class AStarTest {
     @Test
     public void testForward() {
 
-        TraverseOptions options = new TraverseOptions();
+        RoutingRequest options = new RoutingRequest();
         options.setWalkSpeed(1.0);
-
-        ShortestPathTree tree = AStar.getShortestPathTree(_graph, "56th_24th", "leary_20th",
-        		0, options);
+        options.setRoutingContext(_graph, _graph.getVertex("56th_24th"), _graph.getVertex("leary_20th"));
+        ShortestPathTree tree = new GenericAStar().getShortestPathTree(options);
 
         GraphPath path = tree.getPath(_graph.getVertex("leary_20th"), false);
 
@@ -118,12 +117,11 @@ public class AStarTest {
     @Test
     public void testBack() {
 
-        TraverseOptions options = new TraverseOptions();
+        RoutingRequest options = new RoutingRequest();
         options.setWalkSpeed(1.0);
         options.setArriveBy(true);
-
-        ShortestPathTree tree = AStar.getShortestPathTree(_graph, "56th_24th", "leary_20th",
-        		1000, options);
+        options.setRoutingContext(_graph, _graph.getVertex("56th_24th"), _graph.getVertex("leary_20th"));
+        ShortestPathTree tree = new GenericAStar().getShortestPathTree(options);
 
         GraphPath path = tree.getPath(_graph.getVertex("56th_24th"), false);
 
@@ -153,20 +151,20 @@ public class AStarTest {
     @Test
     public void testForwardExtraEdges() {
 
-        TraverseOptions options = new TraverseOptions();
+        RoutingRequest options = new RoutingRequest();
         options.setWalkSpeed(1.0);
 
-        StreetLocation fromLocation = new StreetLocation("near_shilshole_22nd", new Coordinate(
+        StreetLocation fromLocation = new StreetLocation(_graph, "near_shilshole_22nd", new Coordinate(
                 -122.385050, 47.666620), "near_shilshole_22nd");
         fromLocation.getExtra().add(
                 new SimpleEdge(fromLocation, _graph.getVertex("shilshole_22nd")));
 
-        StreetLocation toLocation = new StreetLocation("near_56th_20th", new Coordinate(
+        StreetLocation toLocation = new StreetLocation(_graph, "near_56th_20th", new Coordinate(
                 -122.382347, 47.669518), "near_56th_20th");
         toLocation.getExtra().add(new SimpleEdge(_graph.getVertex("56th_20th"), toLocation));
 
-        ShortestPathTree tree = AStar.getShortestPathTree(_graph, fromLocation, toLocation,
-        		0, options);
+        options.setRoutingContext(_graph, fromLocation, toLocation);
+        ShortestPathTree tree = new GenericAStar().getShortestPathTree(options);
 
         GraphPath path = tree.getPath(toLocation, false);
 
@@ -188,21 +186,21 @@ public class AStarTest {
     @Test
     public void testBackExtraEdges() {
 
-        TraverseOptions options = new TraverseOptions();
+        RoutingRequest options = new RoutingRequest();
         options.setWalkSpeed(1.0);
         options.setArriveBy(true);
 
-        StreetLocation fromLocation = new StreetLocation("near_shilshole_22nd", new Coordinate(
+        StreetLocation fromLocation = new StreetLocation(_graph, "near_shilshole_22nd", new Coordinate(
                 -122.385050, 47.666620), "near_shilshole_22nd");
         fromLocation.getExtra().add(
                 new SimpleEdge(fromLocation, _graph.getVertex("shilshole_22nd")));
 
-        StreetLocation toLocation = new StreetLocation("near_56th_20th", new Coordinate(
+        StreetLocation toLocation = new StreetLocation(_graph, "near_56th_20th", new Coordinate(
                 -122.382347, 47.669518), "near_56th_20th");
         toLocation.getExtra().add(new SimpleEdge(_graph.getVertex("56th_20th"), toLocation));
 
-        ShortestPathTree tree = AStar.getShortestPathTree(_graph, fromLocation, toLocation,
-        		1000, options);
+        options.setRoutingContext(_graph, fromLocation, toLocation);
+        ShortestPathTree tree = new GenericAStar().getShortestPathTree(options);
 
         GraphPath path = tree.getPath(fromLocation, false);
 
@@ -249,7 +247,7 @@ public class AStarTest {
         }
     }
 
-    private static class SimpleEdge extends AbstractEdge {
+    private static class SimpleEdge extends Edge {
         private static final long serialVersionUID = 1L;
 
         public SimpleEdge(Vertex v1, Vertex v2) {
@@ -259,7 +257,7 @@ public class AStarTest {
         @Override
         public State traverse(State s0) {
             double d = getDistance();
-            TraverseMode mode = s0.getNonTransitMode(s0.getOptions());
+            TraverseMode mode = s0.getNonTransitMode();
             int t = (int) (d / s0.getOptions().getSpeed(mode));
             StateEditor s1 = s0.edit(this);
             s1.incrementTimeInSeconds(t);
@@ -268,23 +266,18 @@ public class AStarTest {
         }
 
         @Override
-        public TraverseMode getMode() {
-            return null;
-        }
-
-        @Override
         public String getName() {
             return null;
         }
 
         @Override
-        public Geometry getGeometry() {
+        public LineString getGeometry() {
             return null;
         }
 
         @Override
         public double getDistance() {
-            return DistanceLibrary.distance(getFromVertex().getCoordinate(), getToVertex()
+            return SphericalDistanceLibrary.getInstance().distance(getFromVertex().getCoordinate(), getToVertex()
                     .getCoordinate());
         }
     }

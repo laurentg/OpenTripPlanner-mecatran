@@ -14,30 +14,22 @@
 package org.opentripplanner.routing.graph;
 
 import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.util.Collection;
-
-import com.vividsolutions.jts.geom.Coordinate;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-import org.opentripplanner.common.geometry.DistanceLibrary;
-import org.opentripplanner.common.MavenVersion;
-import org.opentripplanner.common.geometry.Pointlike;
-
-import org.opentripplanner.routing.core.OverlayGraph;
-import org.opentripplanner.routing.graph.Edge;
 import javax.xml.bind.annotation.XmlTransient;
 
-import org.opentripplanner.routing.edgetype.OutEdge;
-import org.opentripplanner.routing.edgetype.PlainStreetEdge;
+import org.opentripplanner.common.MavenVersion;
 import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.TurnEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.vividsolutions.jts.geom.Coordinate;
 
 public abstract class AbstractVertex implements Vertex {
 
@@ -49,7 +41,7 @@ public abstract class AbstractVertex implements Vertex {
 
     private int index;
     
-    private transient int groupIndex = -1;
+    private int groupIndex = -1;
 
     /* short debugging name */
     private final String label;
@@ -85,27 +77,8 @@ public abstract class AbstractVertex implements Vertex {
         this(g, label, x, y);
         this.name = name;
     }
-
     
     /* PUBLIC METHODS */
-    
-    /** Distance in meters to the coordinate */
-    @Override
-    public double distance(Coordinate c) {
-        return DistanceLibrary.distance(getY(), getX(), c.y, c.x);
-    }
-
-    /** Distance in meters to the vertex */
-    @Override
-    public double distance(Pointlike p) {
-        return DistanceLibrary.distance(getLat(), getLon(), p.getLat(), p.getLon());
-    }
-    
-    /** Fast, slightly approximated, under-estimated distance in meters to the vertex */
-    @Override
-    public double fastDistance(Pointlike p) {
-        return DistanceLibrary.fastDistance(getLat(), getLon(), p.getLat(), p.getLon());
-    }
 
     @Override
     public String toString() {
@@ -129,11 +102,12 @@ public abstract class AbstractVertex implements Vertex {
     }
     
     @Override
-    public void removeOutgoing(Edge ee) {
-        outgoing.remove(ee);
+    public boolean removeOutgoing(Edge ee) {
+        boolean removed = outgoing.remove(ee);
         if (outgoing.contains(ee)) {
             LOG.error("edge {} still in edgelist of {} after removed. there must have been multiple copies.");
         }
+        return removed;
     }
 
     /** Get a collection containing all the edges leading from this vertex to other vertices. */
@@ -152,11 +126,12 @@ public abstract class AbstractVertex implements Vertex {
     }
     
     @Override
-    public void removeIncoming(Edge ee) {
-        incoming.remove(ee);
+    public boolean removeIncoming(Edge ee) {
+        boolean removed = incoming.remove(ee);
         if (incoming.contains(ee)) {
             LOG.error("edge {} still in edgelist of {} after removed. there must have been multiple copies.");
         }
+        return removed;
     }
 
     /** Get a collection containing all the edges leading from other vertices to this vertex. */
@@ -197,12 +172,10 @@ public abstract class AbstractVertex implements Vertex {
         return y;
     }
 
-    @Override
     public double getLon() {
         return x;
     }
 
-    @Override
     public double getLat() {
         return y;
     }
@@ -286,7 +259,7 @@ public abstract class AbstractVertex implements Vertex {
     public List<Edge> getOutgoingStreetEdges() {
         List<Edge> result = new ArrayList<Edge>();
         for (Edge out : this.getOutgoing()) {
-            if (!(out instanceof TurnEdge || out instanceof OutEdge || out instanceof PlainStreetEdge)) {
+            if (!(out instanceof StreetEdge)) {
                 continue;
             }
             result.add((StreetEdge) out);
@@ -336,26 +309,6 @@ public abstract class AbstractVertex implements Vertex {
         outgoing = new CopyOnWriteArraySet<Edge>();
     }
     
-    @Override
-    @XmlTransient
-    public Collection<Edge> getEdges(OverlayGraph extraEdges, OverlayGraph replacementEdges, boolean incoming) {
-        Collection<Edge> ret;
-        if (replacementEdges != null) {
-            ret = incoming ? replacementEdges.getIncoming(this) : replacementEdges.getOutgoing(this);
-        } else {
-            ret = incoming ? this.getIncoming() : this.getOutgoing();
-        }
-        if (extraEdges != null) {
-            Collection<Edge> extra = incoming ? extraEdges.getIncoming(this) : extraEdges.getOutgoing(this);
-            if (extra != null) {
-                ret = new ArrayList<Edge>(ret); // copy list
-                ret.addAll(extra);
-                return ret;
-            }
-        }
-        return ret;
-    }
-
     
     /* GRAPH COHERENCY AND TYPE CHECKING */
    
@@ -406,6 +359,11 @@ public abstract class AbstractVertex implements Vertex {
             }
             return false;
         }
+    }
+    
+    @Override public int removeTemporaryEdges() {
+        // do nothing, signal 0 other objects affected
+        return 0;
     }
 
 }

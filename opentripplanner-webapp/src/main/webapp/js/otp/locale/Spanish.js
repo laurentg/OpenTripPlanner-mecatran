@@ -174,6 +174,12 @@ otp.locale.Spanish = {
         trip_details : "Detalles del viaje",
         fare         : "Tarifa",
         fare_symbol  : "\u20ac",
+
+        // TODO  -- used in the Trip Details summary to describe different fares 
+        regular_fare : "",
+        student_fare : "",
+        senior_fare  : "",
+
         travel       : "Hora de salida",
         valid        : "Hora actual",
         trip_length  : "Tiempo",
@@ -213,6 +219,12 @@ otp.locale.Spanish = {
 
     time:
     {
+        // TODO
+        hour_abbrev    : "hour",
+        hours_abbrev   : "hours",
+        hour           : "hour",
+        hours          : "hours",
+
         minute         : "minuto",
         minutes        : "minutos",
         minute_abbrev  : "min",

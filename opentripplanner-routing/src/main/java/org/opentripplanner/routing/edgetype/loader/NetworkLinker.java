@@ -15,10 +15,14 @@ package org.opentripplanner.routing.edgetype.loader;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import org.opentripplanner.common.IterableLibrary;
-import org.opentripplanner.routing.core.GraphBuilderAnnotation;
-import org.opentripplanner.routing.core.GraphBuilderAnnotation.Variety;
+import org.opentripplanner.gbannotation.BikeRentalStationUnlinked;
+import org.opentripplanner.gbannotation.StopUnlinked;
+import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.factory.FindMaxWalkDistances;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
@@ -38,6 +42,7 @@ public class NetworkLinker {
     public NetworkLinker(Graph graph, HashMap<Class<?>,Object> extra) {
         this.graph = graph;
         this.networkLinkerLibrary = new NetworkLinkerLibrary(graph, extra);
+        networkLinkerLibrary.options = new RoutingRequest(TraverseMode.BICYCLE);
     }
 
     public NetworkLinker(Graph graph) {
@@ -63,13 +68,19 @@ public class NetworkLinker {
             // entrances
             if (ts.isEntrance() || !ts.hasEntrances()) {
                 boolean wheelchairAccessible = ts.hasWheelchairEntrance();
-                if (!networkLinkerLibrary.connectVertexToStreets(ts, wheelchairAccessible)) {
-                    _log.warn(GraphBuilderAnnotation.register(graph, Variety.STOP_UNLINKED, ts));
+                if (!networkLinkerLibrary.connectVertexToStreets(ts, wheelchairAccessible).getResult()) {
+                    _log.warn(graph.addBuilderAnnotation(new StopUnlinked(ts)));
+                    networkLinkerLibrary.connectVertexToStreets(ts, wheelchairAccessible);
                 }
             }
         }
-        // no longer necessary
-        //networkLinkerLibrary.addAllReplacementEdgesToGraph();
+        //remove replaced edges
+        for (HashSet<StreetEdge> toRemove : networkLinkerLibrary.replacements.keySet()) {
+            for (StreetEdge edge : toRemove) {
+                edge.getFromVertex().removeOutgoing(edge);
+                edge.getToVertex().removeIncoming(edge);
+            }
+        }
         
         // Do we really need this? Commenting out does seem to cause some slowdown. (AMB)
         networkLinkerLibrary.markLocalStops();
@@ -78,9 +89,8 @@ public class NetworkLinker {
         _log.debug("Linking bike rental stations...");
         for (BikeRentalStationVertex brsv : IterableLibrary.filter(vertices,
                 BikeRentalStationVertex.class)) {
-            if (!networkLinkerLibrary.connectVertexToStreets(brsv)) {
-                _log.warn(GraphBuilderAnnotation.register(graph,
-                        Variety.BIKE_RENTAL_STATION_UNLINKED, brsv));
+            if (!networkLinkerLibrary.connectVertexToStreets(brsv).getResult()) {
+                _log.warn(graph.addBuilderAnnotation(new BikeRentalStationUnlinked(brsv)));
             }
         }
     }

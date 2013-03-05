@@ -11,30 +11,75 @@ if(typeof(otp) == "undefined" || otp == null) otp = {};
 if(typeof(otp.config) == "undefined" || otp.config == null) otp.config = {};
 if(typeof(otp.config.locale) == "undefined" || otp.config.locale == null) otp.config.locale = otp.locale.English;
 
+/* UNCOMMNET the following to have default fares in the UI -- note: routing engine fares take precedence 
+otp.config.default_fares = {
+    regular : "2.00",
+    senior  : "1.00",
+    student : "1.50"
+};
+*/
+
+otp.osm_att = "Map data © <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> contributors, <a href='http://creativecommons.org/licenses/by-sa/2.0/' target='_blank'>CC BY-SA</a>.  ";
+otp.ol_rez = [ 
+        156543.03390000000945292413, 
+        78271.51695000000472646207, 
+        39135.75847500000236323103, 
+        19567.87923750000118161552, 
+        9783.93961875000059080776, 
+        4891.96980937500029540388, 
+        2445.98490468750014770194, 
+        1222.99245234375007385097, 
+        611.49622617187503692548, 
+        305.74811308593751846274, 
+        152.87405654296875923137, 
+        76.43702827148437961569, 
+        38.21851413574218980784, 
+        19.10925706787109490392, 
+        9.55462853393554745196, 
+        4.77731426696777372598, 
+        2.38865713348388686299, 
+        1.19432856674194343150, 
+        0.59716428337097171575, 
+        0.29858214168548585787, 
+        0.14929107084274292894, 
+        0.07464553542137146447, 
+        0.03732276771068573223, 
+        0.01866138385534286612, 
+        0.00933069192767143306
+];
+
 
 // step 2: create an object of default otp.config default values (see step3 where we apply this to any existing config)
 otp.config_defaults = {
-    routerId      : "",
+    routerId      : null,
     locale        : otp.config.locale,
     metricsSystem : otp.config.locale.config.metricsSystem,  // Metrics system (e.g., 'english' == feet, miles, other value or null is metric system)
 
     planner : {
         url            : null,
         printUrl       : "print.html",
-        maxTransfers   : null,    // when maxTransfers > 0, this value will be sent down to the api to override any defaults (current api default == 2 as of 3/2012)
+        maxTransfers   : null,  // when maxTransfers != null, value is sent down as maxTransfers param to the api (current api default maxTransfers=2)
+        appName        : "OpenTripPlanner Map",
 
         // options to turn stuff on / off on the planner
         options        : {
+            showElevationGraph    : true,   // turn on/off the southern panel that displays the elevation data
+            showBikeshareMode     : true,   // turn on/off the bikeshare options in the mode pull down
+            showTrainMode         : true,   // turn on/off the train options in the mode pull down
             showWheelchairForm    : true,   // turn on/off the wheelchair check box (on by default)
             showIntermediateForms : true,   // turn on/off the ability to plan routes with intermediate points 
             showStopCodes         : true,   // show stop codes as part of the itinerary
             showAgencyInfo        : true,   // show the 'service run by Yolobus' on each itinerary leg
             showFareInfo          : true,   // show the fare information in the itinerary
+            showReverseButton     : true,   // turn on/off itinerary reverse button
+            showEditButton        : true,   // turn on/off itinerary edit button
             showPrintButton       : true,   // turn on/off itinerary print button
             showLinksButton       : true,   // turn on/off itinerary links button
+            showLayerSwitcher     : true,   // turn on/off OpenLayers layer switcher when more than 1 basemap exists (see map.baseLayer below)
+            setMaxExtentToDefault : true,   // will replace the OpenLayers.Map.zoomToMaxExtent() method with a pointer to otp.core.Map.zoomToDefaultExtent()
             useOptionDependencies : true,   // trip form changes based on mode and optimize flags (e.g., bike mode has no wheelchair or walk distance forms etc...) 
             useRouteLongName      : false,  // format route name with both short-name and long-name...see / override Itinerary.makeRouteName() for different formatting options
-            appendGeocodeName     : true,   // true = send string:lat,lon parameter format to OTP, else just lat,lon goes to OTP 
+            appendGeocodeName     : true,   // true = send string:lat,lon parameter format to OTP, else just lat,lon goes to OTP
             OPTIONS_NOTE: "THIS IS A STRUCTURE USED TO CUSTOMIZE THE TRIP FORMS AND OTHER BEHAVIORS"
         },
 
@@ -67,27 +112,6 @@ otp.config_defaults = {
             addressParamName : "address"
         },
         fromToOverride : new Ext.Template('<div class="mapHelp">' + otp.config.locale.config.rightClickMsg + '</div>')
-
-        /* debug geocoder */
-        /*  *
-        ,fromToOverride:null,
-        geocoder  :
-        {
-            enabled : true,
-            isSolr  : true,
-            url     : "/js/otp/planner/test/solr-geo.json",
-            addressParamName : "address"
-        }
-        /*  *
-        ,fromToOverride:null,
-        geocoder  :
-        {
-            enabled : true,
-            isSolr  : false,
-            url     : "/js/otp/planner/test/geo-multi.xml",
-            addressParamName : "address"
-        }
-        /* */
     },
 
     map : {
@@ -95,7 +119,7 @@ otp.config_defaults = {
         // This can either be an OpenLayers.Bounds object or the string "automatic"
         // If set to "automatic", the client will ask the server for the default extent.
         defaultExtent: "automatic",
-     
+
         // These options are passed directly to the OpenLayers.Map constructor.
         options : {
             projection        : new OpenLayers.Projection("EPSG:900913"),
@@ -119,11 +143,11 @@ otp.config_defaults = {
                ],
                {
                    numZoomLevels: 18,
-                   attribution:"Data<a href='http://creativecommons.org/licenses/by-sa/2.0/' target='_blank'> CC-BY-SA </a>" +
-                   "by<a href='http://openstreetmap.org/' target='_blank'> OpenStreetMap.</a> " +
-                   "Tiles from<a href='http://mapbox.com/about/maps' target='_blank'> MapBox Streets.</a>"
+                   attribution: otp.osm_att + "Tiles from<a href='http://mapbox.com/about/maps' target='_blank'> MapBox Streets.</a>"
                }
-           ),
+           )
+           /* comment here to test single / multiple basemaps & layer switcher on/off */
+           ,
            // Regular Open Street Map server
            new OpenLayers.Layer.OSM(
                "Open Street Map"
@@ -137,13 +161,12 @@ otp.config_defaults = {
                 ],
                 {
                     numZoomLevels: 17,
-                    attribution:"Data <a href='http://creativecommons.org/licenses/by-sa/2.0/'> CC-BY-SA</a> by <a href='www.opencyclemap.org'>OpenCycleMap </a> and <a href='http://openstreetmap.org/'> Open Street Map</a>"
+                    attribution: otp.osm_att + "and <a href='www.opencyclemap.org' target='_blank'>OpenCycleMap </a>"
                 }
            ),
            // here's the MapQuest baseMap option for basemap tiles
            new OpenLayers.Layer.OSM(
                "OSM MapQuest",[
-                   "http://otile1.mqcdn.com/tiles/1.0.0/osm/${z}/${x}/${y}.png",
                    "http://otile2.mqcdn.com/tiles/1.0.0/osm/${z}/${x}/${y}.png",
                    "http://otile3.mqcdn.com/tiles/1.0.0/osm/${z}/${x}/${y}.png",
                    "http://otile4.mqcdn.com/tiles/1.0.0/osm/${z}/${x}/${y}.png"
@@ -152,8 +175,23 @@ otp.config_defaults = {
                    sphericalMecator : true,
                    isBaseLayer      : true,
                    numZoomLevels    : 19,
-                   attribution:"Data <a href='http://creativecommons.org/licenses/by-sa/2.0/'> CC-BY-SA </a> by  <a href='http://openstreetmap.org/'> OpenStreetMap</a>."
-                   +" Tiles courtesy of <a href='http://open.mapquest.com/' target='_blank'>MapQuest</a>"
+                   attribution: otp.osm_att + " Tiles courtesy of <a href='http://open.mapquest.com/' target='_blank'>MapQuest</a>"
+               }
+           ),
+           // here's the limited zoom example
+           new OpenLayers.Layer.OSM(
+               "Limited Zoom Example",[
+                   "http://otile2.mqcdn.com/tiles/1.0.0/osm/${z}/${x}/${y}.png",
+                   "http://otile3.mqcdn.com/tiles/1.0.0/osm/${z}/${x}/${y}.png",
+                   "http://otile4.mqcdn.com/tiles/1.0.0/osm/${z}/${x}/${y}.png"
+               ],
+               {
+                   serverResolutions : otp.ol_rez,
+                   maxResolution     : 76.43702827148437961569,
+                   sphericalMecator  : true,
+                   isBaseLayer       : true,
+                   numZoomLevels     : 8,
+                   attribution: otp.osm_att + " Tiles courtesy of <a href='http://open.mapquest.com/' target='_blank'>MapQuest</a>"
                }
            )
         ],

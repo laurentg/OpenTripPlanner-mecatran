@@ -13,15 +13,14 @@
 
 package org.opentripplanner.routing.edgetype;
 
-import org.opentripplanner.routing.core.EdgeNarrative;
+import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.StateEditor;
 import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseOptions;
-import org.opentripplanner.routing.graph.AbstractEdge;
+import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
 
-import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineString;
 
 /**
  * Parking a car at a park-and-ride station.
@@ -29,7 +28,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * @author laurent
  * 
  */
-public class ParkAndRideEdge extends AbstractEdge {
+public class ParkAndRideEdge extends Edge {
 
 	private static final long serialVersionUID = 1L;
 
@@ -39,21 +38,19 @@ public class ParkAndRideEdge extends AbstractEdge {
 	
 	@Override
 	public State traverse(State s0) {
-		TraverseOptions options = s0.getOptions();
+		RoutingRequest options = s0.getOptions();
 		if (options.isArriveBy()) {
 			/*
 			 * To get back a car, we need to walk and have car mode enabled.
 			 */
-			if (s0.getNonTransitMode(options) != TraverseMode.WALK)
+			if (s0.getNonTransitMode() != TraverseMode.WALK)
 				return null;
 			if (!options.getModes().getCar())
 				return null;
 			if (!s0.isCarParked())
 				throw new IllegalStateException("Your car has been stolen?");
-			EdgeNarrative en = new FixedModeEdge(this,
-					s0.getNonTransitMode(options));
 
-			StateEditor s1e = s0.edit(this, en);
+			StateEditor s1e = s0.edit(this);
 			s1e.incrementWeight(options.parkAndRideCost);
 			s1e.incrementTimeInSeconds(options.parkAndRideTime);
 			s1e.setCarParked(false);
@@ -63,16 +60,14 @@ public class ParkAndRideEdge extends AbstractEdge {
 			/*
 			 * To park a car, we need to be in one, and be able to walk afterwards.
 			 */
-			if (s0.getNonTransitMode(options) != TraverseMode.CAR)
+			if (s0.getNonTransitMode() != TraverseMode.CAR)
 				return null;
 			if (!options.getModes().getWalk())
 				return null;
 			if (s0.isCarParked())
 				throw new IllegalStateException("Do you happen to have TWO cars?");
-			EdgeNarrative en = new FixedModeEdge(this,
-					s0.getNonTransitMode(options));
 
-			StateEditor s1e = s0.edit(this, en);
+			StateEditor s1e = s0.edit(this);
 			s1e.incrementWeight(options.parkAndRideCost);
 			s1e.incrementTimeInSeconds(options.parkAndRideTime);
 			s1e.setCarParked(true);
@@ -87,13 +82,8 @@ public class ParkAndRideEdge extends AbstractEdge {
 	}
 
 	@Override
-	public Geometry getGeometry() {
+	public LineString getGeometry() {
 		return null;
-	}
-
-	@Override
-	public TraverseMode getMode() {
-		return TraverseMode.WALK;
 	}
 
 	@Override

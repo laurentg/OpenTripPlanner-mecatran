@@ -33,13 +33,21 @@ otp.application.Controller = {
     {
         this.config = otp.util.ObjUtils.getConfig(config);
 
+        // TODO more work needed to make train, bikeshare, etc... modes a 'switchable' feature in the UI
+        // TODO see otp.config_defaults.planner.options and the related code as to how to turn stuff on & off
+        if(this.config.planner.options.showBikeshareMode)
+        {
+            otp.locale.English.tripPlanner.mode = otp.locale.English.tripPlanner.with_bikeshare_mode;
+        }
+
         // set defaults on the config.map if things don't already exist
         otp.inherit(this.config.map, {
             cm               : this.cm, 
             locale           : this.config.locale,
             routerId         : this.config.routerId,
             attribution      : otp.util.ExtUtils.MAP_ATTRIBUTION,
-            options: {
+            plannerOptions   : this.config.planner.options,
+            options          : {
                 controls: []
             }
         });
@@ -93,6 +101,10 @@ otp.application.Controller = {
     {
         // do the POI and the openTool stuff (and if a POI exists, suspend the pan on the tool)
         var p = this.params.getPoi(this.poi, this.map);
+
+        // full screen
+        if(this.params.isFullScreen())
+            this.ui.fullScreen(true);
 
         // trip planner forms
         var forms = this.planner.getForms();

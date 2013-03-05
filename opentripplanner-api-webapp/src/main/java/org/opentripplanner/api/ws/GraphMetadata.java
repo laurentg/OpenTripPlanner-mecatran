@@ -23,8 +23,7 @@ import org.opentripplanner.routing.edgetype.PatternHop;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.services.GraphService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.opentripplanner.routing.services.TransitIndexService;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
@@ -32,26 +31,20 @@ import com.vividsolutions.jts.geom.Envelope;
 @XmlRootElement
 public class GraphMetadata {
 
-
-    /**
-     * The bounding box of the graph, in decimal degrees.
-     */
+    /** The bounding box of the graph, in decimal degrees. */
     private double lowerLeftLatitude, lowerLeftLongitude, upperRightLatitude, upperRightLongitude;
 
     private HashSet<TraverseMode> transitModes = new HashSet<TraverseMode>();
 
+    private double centerLatitude;
+
+    private double centerLongitude;
+
     public GraphMetadata() {
+    	// 0-arg constructor avoids com.sun.xml.bind.v2.runtime.IllegalAnnotationsException
     }
 
-    public GraphMetadata(GraphService graphService) {
-        setGraphService(graphService);
-    }
-
-    @Autowired    
-    public void setGraphService(GraphService graphService) {
-
-        Graph graph = graphService.getGraph();
-        
+    public GraphMetadata(Graph graph) {
         /* generate extents */
         Envelope leftEnv = new Envelope();
         Envelope rightEnv = new Envelope();
@@ -99,6 +92,18 @@ public class GraphMetadata {
             }
             setUpperRightLatitude(Math.max(rightEnv.getMaxY(), leftEnv.getMaxY()));
             setLowerLeftLatitude(Math.min(rightEnv.getMinY(), leftEnv.getMinY()));
+        }
+
+        TransitIndexService tis = graph.getService(TransitIndexService.class);
+        if (tis == null) {
+            // default center
+            //fixme does not work around 180th parallel
+            setCenterLatitude((upperRightLatitude + lowerLeftLatitude) / 2);
+            setCenterLongitude((upperRightLongitude + lowerLeftLongitude) / 2);
+        } else {
+            Coordinate center = tis.getCenter();
+            setCenterLatitude(center.y);
+            setCenterLongitude(center.x);
         }
     }
 
@@ -213,5 +218,21 @@ public class GraphMetadata {
 
     public void setTransitModes(HashSet<TraverseMode> transitModes) {
         this.transitModes = transitModes;
+    }
+
+    public double getCenterLongitude() {
+        return centerLongitude;
+    }
+
+    public void setCenterLongitude(double centerLongitude) {
+        this.centerLongitude = centerLongitude;
+    }
+
+    public double getCenterLatitude() {
+        return centerLatitude;
+    }
+
+    public void setCenterLatitude(double centerLatitude) {
+        this.centerLatitude = centerLatitude;
     }
 }

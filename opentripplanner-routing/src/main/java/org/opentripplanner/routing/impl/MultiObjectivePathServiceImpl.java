@@ -13,32 +13,33 @@
 
 package org.opentripplanner.routing.impl;
 
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.opentripplanner.common.model.NamedPlace;
+import org.opentripplanner.common.geometry.DistanceLibrary;
+import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.common.pqueue.BinHeap;
 import org.opentripplanner.routing.algorithm.TraverseVisitor;
 import org.opentripplanner.routing.algorithm.strategies.BidirectionalRemainingWeightHeuristic;
-import org.opentripplanner.routing.algorithm.strategies.ExtraEdgesStrategy;
+import org.opentripplanner.routing.algorithm.strategies.DefaultRemainingWeightHeuristic;
 import org.opentripplanner.routing.algorithm.strategies.RemainingWeightHeuristic;
-import org.opentripplanner.routing.core.OverlayGraph;
+import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.TraverseOptions;
-import org.opentripplanner.routing.error.TransitTimesException;
-import org.opentripplanner.routing.error.VertexNotFoundException;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.common.pqueue.BinHeap;
+import org.opentripplanner.routing.pathparser.BasicPathParser;
+import org.opentripplanner.routing.pathparser.NoThruTrafficPathParser;
+import org.opentripplanner.routing.pathparser.PathParser;
+import org.opentripplanner.routing.services.GraphService;
+import org.opentripplanner.routing.services.PathService;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.util.monitoring.MonitoringStore;
 import org.opentripplanner.util.monitoring.MonitoringStoreFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 /**
  * Implements a multi-objective goal-directed search algorithm like the one in Sec. 4.2 of: 
  * Perny and Spanjaard. Near Admissible Algorithms for Multiobjective Search.
@@ -64,18 +65,24 @@ import org.springframework.stereotype.Component;
  *
  * @author andrewbyrd
  */
-@Component
-public class MultiObjectivePathServiceImpl extends GenericPathService {
+//@Component
+public class MultiObjectivePathServiceImpl implements PathService {
+
+    @Autowired public GraphService graphService;
 
     private static final Logger LOG = LoggerFactory.getLogger(MultiObjectivePathServiceImpl.class);
 
     private static final MonitoringStore store = MonitoringStoreFactory.getStore();
+
+    private static final double MAX_WALK = 100000;
     
     private double[] _timeouts = new double[] {4, 2, 0.6, 0.4}; // seconds
     
     private double _maxPaths = 4;
 
     private TraverseVisitor traverseVisitor;
+
+    private DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
 
     /**
      * Give up on searching for itineraries after this many seconds have elapsed.
@@ -96,92 +103,58 @@ public class MultiObjectivePathServiceImpl extends GenericPathService {
     }
 
     @Override
-    public List<GraphPath> plan(NamedPlace fromPlace, NamedPlace toPlace, Date targetTime,
-            TraverseOptions options, int nItineraries) {
+    public List<GraphPath> getPaths(RoutingRequest options) {
 
-        ArrayList<String> notFound = new ArrayList<String>();
-        Vertex fromVertex = getVertexForPlace(fromPlace, options);
-        if (fromVertex == null) {
-            notFound.add("from");
-        }
-        Vertex toVertex = getVertexForPlace(toPlace, options);
-        if (toVertex == null) {
-            notFound.add("to");
+        if (options.rctx == null) {
+            options.setRoutingContext(graphService.getGraph(options.getRouterId()));
+            // move into setRoutingContext ?
+            options.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
+                    new NoThruTrafficPathParser() };
         }
 
-        if (notFound.size() > 0) {
-            throw new VertexNotFoundException(notFound);
-        }
-
-        Vertex origin = null;
-        Vertex target = null;
-
-        if (options.isArriveBy()) {
-            origin = toVertex;
-            target = fromVertex;
+        RemainingWeightHeuristic heuristic;
+        if (options.getModes().isTransit()) {
+            LOG.debug("Transit itinerary requested.");
+            // always use the bidirectional heuristic because the others are not precise enough
+            heuristic = new BidirectionalRemainingWeightHeuristic(options.rctx.graph);
         } else {
-            origin = fromVertex;
-            target = toVertex;
-        }
-
-        State state = new State((int)(targetTime.getTime() / 1000), origin, options);
-
-        return plan(state, target, nItineraries);
-    }
-
-    @Override
-    public List<GraphPath> plan(State origin, Vertex target, int nItineraries) {
-
-        TraverseOptions options = origin.getOptions();
-
-        if (_graphService.getCalendarService() != null)
-            options.setCalendarService(_graphService.getCalendarService());
-        options.setTransferTable(_graphService.getGraph().getTransferTable());
-
-        options.setServiceDays(origin.getTime(), _graphService.getGraph().getAgencyIds());
-        if (options.getModes().getTransit()
-            && !_graphService.getGraph().transitFeedCovers(new Date(origin.getTime() * 1000))) {
-            // user wants a path through the transit network,
-            // but the date provided is outside those covered by the transit feed.
-            throw new TransitTimesException();
-        }
-        
-        // always use the bidirectional heuristic because the others are not precise enough
-        RemainingWeightHeuristic heuristic = new BidirectionalRemainingWeightHeuristic(_graphService.getGraph());
+            LOG.debug("Non-transit itinerary requested.");
+            heuristic = new DefaultRemainingWeightHeuristic();
+        }        
                 
         // the states that will eventually be turned into paths and returned
         List<State> returnStates = new LinkedList<State>();
 
-        // Populate any extra edges
-        final ExtraEdgesStrategy extraEdgesStrategy = options.extraEdgesStrategy;
-        OverlayGraph extraEdges = new OverlayGraph();
-        extraEdgesStrategy.addEdgesFor(extraEdges, origin.getVertex());
-        extraEdgesStrategy.addEdgesFor(extraEdges, target);
-        
         BinHeap<State> pq = new BinHeap<State>();
 //        List<State> boundingStates = new ArrayList<State>();
-
+        
+        Vertex originVertex = options.rctx.origin;
+        Vertex targetVertex = options.rctx.target;
         
         // increase maxWalk repeatedly in case hard limiting is in use 
-        WALK: for (double maxWalk = options.getMaxWalkDistance();
-                          maxWalk < 100000 && returnStates.isEmpty();
-                          maxWalk *= 2) {
+        WALK: for (double maxWalk = options.getMaxWalkDistance(); returnStates.isEmpty(); maxWalk *= 2) {
+            if (maxWalk != Double.MAX_VALUE && maxWalk > MAX_WALK) {
+                break;
+            }
             LOG.debug("try search with max walk {}", maxWalk);
             // increase maxWalk if settings make trip impossible
-            if (maxWalk < Math.min(origin.getVertex().distance(target), 
-                origin.getVertex().getDistanceToNearestTransitStop() +
-                target.getDistanceToNearestTransitStop())) 
+            if (maxWalk < Math.min(distanceLibrary.distance(originVertex.getCoordinate(), 
+                    targetVertex.getCoordinate()), 
+                originVertex.getDistanceToNearestTransitStop() +
+                targetVertex.getDistanceToNearestTransitStop())) 
                 continue WALK;
             options.setMaxWalkDistance(maxWalk);
             
             // cap search / heuristic weight
             final double AVG_TRANSIT_SPEED = 25; // m/sec 
-            double cutoff = (origin.getVertex().distance(target) * 1.5) / AVG_TRANSIT_SPEED; // wait time is irrelevant in the heuristic
+            double cutoff = (distanceLibrary.distance(originVertex.getCoordinate(),
+                    targetVertex.getCoordinate()) * 1.5) / AVG_TRANSIT_SPEED; // wait time is irrelevant in the heuristic
             cutoff += options.getMaxWalkDistance() * options.walkReluctance;
             options.maxWeight = cutoff;
             
+            State origin = new State(options);
             // (used to) initialize heuristic outside loop so table can be reused
-            heuristic.computeInitialWeight(origin, target);
+            heuristic.computeInitialWeight(origin, targetVertex);
             
             options.maxWeight = cutoff + 30 * 60 * options.waitReluctance;
             
@@ -197,17 +170,17 @@ public class MultiObjectivePathServiceImpl extends GenericPathService {
                 if (System.currentTimeMillis() > endTime) {
                     LOG.debug("timeout at {} msec", System.currentTimeMillis() - startTime);
                     if (returnStates.isEmpty())
-                        continue WALK;
+                        break WALK; // disable walk distance increases
                     else {
                         storeMemory();
                         break WALK;
                     }
                 }
     
-                if (pq.peek_min_key() > options.maxWeight) {
-                    LOG.debug("max weight {} exceeded", options.maxWeight);
-                    break QUEUE;
-                }
+//                if (pq.peek_min_key() > options.maxWeight) {
+//                    LOG.debug("max weight {} exceeded", options.maxWeight);
+//                    break QUEUE;
+//                }
                 
                 State su = pq.extract_min();
     
@@ -223,10 +196,10 @@ public class MultiObjectivePathServiceImpl extends GenericPathService {
                     traverseVisitor.visitVertex(su);
                 }
     
-                if (u.equals(target)) {
+                if (u.equals(targetVertex)) {
 //                    boundingStates.add(su);
                     returnStates.add(su);
-                    if ( ! options.getModes().getTransit())
+                    if ( ! options.getModes().isTransit())
                         break QUEUE;
                     // options should contain max itineraries
                     if (returnStates.size() >= _maxPaths)
@@ -240,13 +213,14 @@ public class MultiObjectivePathServiceImpl extends GenericPathService {
                     continue QUEUE;
                 }
                 
-                for (Edge e : u.getEdges(extraEdges, null, options.isArriveBy())) {
+                for (Edge e : options.isArriveBy() ? u.getIncoming() : u.getOutgoing()) {
                     STATE: for (State new_sv = e.traverse(su); new_sv != null; new_sv = new_sv.getNextResult()) {
                         if (traverseVisitor != null) {
                             traverseVisitor.visitEdge(e, new_sv);
                         }
 
-                        double h = heuristic.computeForwardWeight(new_sv, target);
+                        double h = heuristic.computeForwardWeight(new_sv, targetVertex);
+                        if (h == Double.MAX_VALUE) continue;
 //                    for (State bs : boundingStates) {
 //                        if (eDominates(bs, new_sv)) {
 //                            continue STATE;
@@ -309,14 +283,19 @@ public class MultiObjectivePathServiceImpl extends GenericPathService {
 //               s0.getWalkDistance() <= s1.getWalkDistance() * (1 + EPSILON) && 
 //               s0.getNumBoardings() <= s1.getNumBoardings();
 //    }
-
+    
+    // TODO: move into an epsilon-dominance shortest path tree
     private boolean eDominates(State s0, State s1) {
         final double EPSILON = 0.05;
-        if (s0.similarTripSeq(s1)) {
+        if (s0.similarRouteSequence(s1)) {
             return s0.getWeight() <= s1.getWeight() * (1 + EPSILON) &&
-                    s0.getTime() <= s1.getTime() * (1 + EPSILON) &&
+                    s0.getElapsedTime() <= s1.getElapsedTime() * (1 + EPSILON) &&
                     s0.getWalkDistance() <= s1.getWalkDistance() * (1 + EPSILON) && 
-                    s0.getNumBoardings() <= s1.getNumBoardings();
+                    s0.getNumBoardings() <= s1.getNumBoardings() &&
+                    (s0.getWeight() < s1.getWeight() ||
+                     s0.getElapsedTime() < s1.getElapsedTime() ||
+                     s0.getWalkDistance() < s1.getWalkDistance() ||
+                     s0.getNumBoardings() < s1.getNumBoardings());
         } else {
             return false;
         }
@@ -357,11 +336,5 @@ public class MultiObjectivePathServiceImpl extends GenericPathService {
 //                s0.getTime() <= s1.getTime() * (1 + EPSILON) && 
 //               s0.getNumBoardings() <= s1.getNumBoardings();
 //    }
-
-    @Override
-    public List<GraphPath> plan(NamedPlace fromPlace, NamedPlace toPlace, List<NamedPlace> intermediates,
-            boolean ordered, Date targetTime, TraverseOptions options) {
-        return null;
-    }
 
 }

@@ -14,7 +14,7 @@
 package org.opentripplanner.routing.edgetype;
 
 import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.TraverseOptions;
+import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
 
 /**
@@ -29,13 +29,13 @@ public class RentABikeOnEdge extends RentABikeAbstractEdge {
 
     private static final long serialVersionUID = 1L;
 
-    public RentABikeOnEdge(BikeRentalStationVertex from, BikeRentalStationVertex to) {
-        super(from, to);
+    public RentABikeOnEdge(BikeRentalStationVertex from, BikeRentalStationVertex to, String network) {
+        super(from, to, network);
     }
 
     @Override
     public State traverse(State s0) {
-        TraverseOptions options = s0.getOptions();
+        RoutingRequest options = s0.getOptions();
         if (options.isArriveBy()) {
             return super.traverseDropoff(s0);
         } else {

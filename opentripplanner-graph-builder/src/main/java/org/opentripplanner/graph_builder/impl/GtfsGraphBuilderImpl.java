@@ -15,7 +15,7 @@ package org.opentripplanner.graph_builder.impl;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,6 +35,7 @@ import org.onebusaway.gtfs.serialization.GtfsReader;
 import org.onebusaway.gtfs.services.GenericMutableDao;
 import org.onebusaway.gtfs.services.GtfsMutableRelationalDao;
 import org.opentripplanner.calendar.impl.MultiCalendarServiceImpl;
+import org.opentripplanner.gbannotation.AgencyNameCollision;
 import org.opentripplanner.graph_builder.model.GtfsBundle;
 import org.opentripplanner.graph_builder.model.GtfsBundles;
 import org.opentripplanner.graph_builder.services.EntityReplacementStrategy;
@@ -42,9 +43,8 @@ import org.opentripplanner.graph_builder.services.GraphBuilder;
 import org.opentripplanner.graph_builder.services.GraphBuilderWithGtfsDao;
 import org.opentripplanner.gtfs.GtfsContext;
 import org.opentripplanner.gtfs.GtfsLibrary;
-import org.opentripplanner.routing.core.GraphBuilderAnnotation;
-import org.opentripplanner.routing.core.GraphBuilderAnnotation.Variety;
 import org.opentripplanner.routing.edgetype.factory.GTFSPatternHopFactory;
+import org.opentripplanner.routing.edgetype.factory.GtfsStopContext;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.services.FareServiceFactory;
 import org.slf4j.Logger;
@@ -80,8 +80,17 @@ public class GtfsGraphBuilderImpl implements GraphBuilder {
 
     Map<Agency, GtfsBundle> agenciesSeen = new HashMap<Agency, GtfsBundle>();
 
+    private boolean generateFeedIds = false;
+
     public List<String> provides() {
-        return Arrays.asList("transit");
+        List<String> result = new ArrayList<String>();
+        result.add("transit");
+        if (gtfsGraphBuilders != null) {
+            for (GraphBuilderWithGtfsDao builder : gtfsGraphBuilders) {
+                result.addAll(builder.provides());
+            }
+        }
+        return result;
     }
 
     public List<String> getPrerequisites() {
@@ -113,14 +122,21 @@ public class GtfsGraphBuilderImpl implements GraphBuilder {
     public void buildGraph(Graph graph, HashMap<Class<?>, Object> extra) {
 
         MultiCalendarServiceImpl service = new MultiCalendarServiceImpl();
-
+        GtfsStopContext stopContext = new GtfsStopContext();
+        
         try {
+            int bundleIndex = 0;
             for (GtfsBundle gtfsBundle : _gtfsBundles.getBundles()) {
-
+                bundleIndex += 1;
                 GtfsMutableRelationalDao dao = new GtfsRelationalDaoImpl();
                 GtfsContext context = GtfsLibrary.createContext(dao, service);
                 GTFSPatternHopFactory hf = new GTFSPatternHopFactory(context);
+                hf.setStopContext(stopContext);
                 hf.setFareServiceFactory(_fareServiceFactory);
+
+                if (generateFeedIds && gtfsBundle.getDefaultAgencyId() == null) {
+                    gtfsBundle.setDefaultAgencyId("FEED#" + bundleIndex);
+                }
 
                 loadBundle(gtfsBundle, graph, dao);
 
@@ -155,13 +171,12 @@ public class GtfsGraphBuilderImpl implements GraphBuilder {
 
     }
 
-
     /****
      * Private Methods
      ****/
 
-
-    private void loadBundle(GtfsBundle gtfsBundle, Graph graph, GtfsMutableRelationalDao dao) throws IOException {
+    private void loadBundle(GtfsBundle gtfsBundle, Graph graph, GtfsMutableRelationalDao dao)
+            throws IOException {
 
         StoreImpl store = new StoreImpl(dao);
         store.open();
@@ -170,7 +185,7 @@ public class GtfsGraphBuilderImpl implements GraphBuilder {
         GtfsReader reader = new GtfsReader();
         reader.setInputSource(gtfsBundle.getCsvInputSource());
         reader.setEntityStore(store);
- 
+
         reader.setInternStrings(true);
 
         if (gtfsBundle.getDefaultAgencyId() != null)
@@ -193,8 +208,7 @@ public class GtfsGraphBuilderImpl implements GraphBuilder {
                 for (Agency agency : reader.getAgencies()) {
                     GtfsBundle existing = agenciesSeen.get(agency);
                     if (existing != null) {
-                        _log.warn(GraphBuilderAnnotation.register(graph,
-                                Variety.AGENCY_NAME_COLLISION, agency, existing.toString()));
+                        _log.warn(graph.addBuilderAnnotation(new AgencyNameCollision(agency, existing.toString())));
                     } else {
                         agenciesSeen.put(agency, gtfsBundle);
                     }
@@ -341,5 +355,9 @@ public class GtfsGraphBuilderImpl implements GraphBuilder {
         for (GtfsBundle bundle : _gtfsBundles.getBundles()) {
             bundle.checkInputs();
         }
+    }
+
+    public void setGenerateFeedIds(boolean generateFeedIds) {
+        this.generateFeedIds = generateFeedIds;
     }
 }

@@ -55,7 +55,6 @@ import org.opentripplanner.openstreetmap.impl.OSMDownloader;
 import org.opentripplanner.routing.graph.Graph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -85,7 +84,6 @@ public class NEDDownloader implements NEDTileSource {
     private double _lonXStep = 0.16;
 
     @Override
-    @Autowired
     public void setGraph(Graph graph) {
         this.graph = graph;
     }
@@ -311,13 +309,13 @@ public class NEDDownloader implements NEDTileSource {
             String[] parts = param.split("=");
 
             if (parts[0].equals("lft")) {
-                lft = parts[1];
+                lft = String.format("%.5g", Double.parseDouble(parts[1]));
             } else if (parts[0].equals("rgt")) {
-                rgt = parts[1];
+                rgt = String.format("%.5g", Double.parseDouble(parts[1]));
             } else if (parts[0].equals("top")) {
-                top = parts[1];
+                top = String.format("%.5g", Double.parseDouble(parts[1]));
             } else if (parts[0].equals("bot")) {
-                bot = parts[1];
+                bot = String.format("%.5g", Double.parseDouble(parts[1]));
             }
         }
 
@@ -394,6 +392,7 @@ public class NEDDownloader implements NEDTileSource {
         Formatter formatter = new Formatter();
         String filename = formatter.format("%f,%f-%f,%f.urls", extent.getMinX(), extent.getMinY(),
                 extent.getMaxX(), extent.getMaxY()).toString();
+        formatter.close();
         try {
             File file = new File(cacheDirectory, filename);
             List<URL> urls;

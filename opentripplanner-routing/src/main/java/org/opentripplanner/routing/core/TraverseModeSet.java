@@ -15,8 +15,8 @@ package org.opentripplanner.routing.core;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 
 /**
  * A set of traverse modes -- typically, one non-transit mode (walking, biking, car) and zero or
@@ -107,7 +107,7 @@ public class TraverseModeSet implements Cloneable, Serializable {
         return 0;
     }
 
-    public TraverseModeSet(List<TraverseMode> modeList) {
+    public TraverseModeSet(Collection<TraverseMode> modeList) {
         this(modeList.toArray(new TraverseMode[0]));
     }
     
@@ -281,8 +281,8 @@ public class TraverseModeSet implements Cloneable, Serializable {
         }
     }
 
-    /** Returns true if any the trip may use some transit mode */
-    public boolean getTransit() {
+    /** Returns true if the trip may use some transit mode */
+    public boolean isTransit() {
         return (modes & (MODE_TRANSIT)) != 0;
     }
 
@@ -342,6 +342,18 @@ public class TraverseModeSet implements Cloneable, Serializable {
         return "TraverseMode (" + out + ")";
     }
 
+    public String getAsStr() {
+        String retVal = null;
+        for (TraverseMode m : getModes()) {
+            if (retVal == null)
+                retVal = "";
+            else
+                retVal += ", ";
+            retVal += m;
+        }
+        return retVal;
+    }
+
     @Override
     public TraverseModeSet clone() {
         try {
@@ -356,7 +368,7 @@ public class TraverseModeSet implements Cloneable, Serializable {
      * @param restrictedModes A set of restricted modes
      * @return false If *at least one* of the non-transit mode is not restricted.
      */
-    public boolean isRestricted(Set<TraverseMode> restrictedModes) {
+    public boolean isRestricted(TraverseModeSet restrictedModes) {
         // For each non-transit mode, test if it's set and not restricted.
         // If so, then the traverse mode set is not restricted.
         if (getWalk() && !restrictedModes.contains(TraverseMode.WALK))
@@ -368,12 +380,15 @@ public class TraverseModeSet implements Cloneable, Serializable {
         return true;
     }
 
-    @Override
-    public boolean equals(Object another) {
-        if (!(another instanceof TraverseModeSet))
-            return false;
-        TraverseModeSet otherset = (TraverseModeSet) another;
-        return modes == otherset.modes;
+    public int hashCode() {
+        return modes;
+    }
+
+    public boolean equals(Object other) {
+        if (other instanceof TraverseModeSet) {
+            return modes == ((TraverseModeSet)other).modes;
+        }
+        return false;
     }
 
 }

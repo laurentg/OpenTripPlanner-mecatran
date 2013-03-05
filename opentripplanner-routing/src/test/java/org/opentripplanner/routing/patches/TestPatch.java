@@ -29,18 +29,18 @@ import org.onebusaway.gtfs.model.Route;
 import org.onebusaway.gtfs.model.ServiceCalendar;
 import org.onebusaway.gtfs.model.ServiceCalendarDate;
 import org.onebusaway.gtfs.model.Stop;
+import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.opentripplanner.ConstantsForTests;
 import org.opentripplanner.gtfs.GtfsContext;
 import org.opentripplanner.gtfs.GtfsLibrary;
-import org.opentripplanner.routing.algorithm.AStar;
+import org.opentripplanner.routing.algorithm.GenericAStar;
 import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseOptions;
-import org.opentripplanner.routing.edgetype.PatternBoard;
+import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.edgetype.TransitBoardAlight;
 import org.opentripplanner.routing.edgetype.PatternHop;
 import org.opentripplanner.routing.edgetype.PreAlightEdge;
 import org.opentripplanner.routing.edgetype.PreBoardEdge;
 import org.opentripplanner.routing.edgetype.factory.GTFSPatternHopFactory;
-import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.patch.Alert;
@@ -52,21 +52,24 @@ import org.opentripplanner.routing.transit_index.RouteSegment;
 import org.opentripplanner.routing.transit_index.RouteVariant;
 import org.opentripplanner.util.TestUtils;
 
+import com.vividsolutions.jts.geom.Coordinate;
+
 public class TestPatch extends TestCase {
     private Graph graph;
 
-    private TraverseOptions options;
+    private RoutingRequest options;
 
+    private GenericAStar aStar = new GenericAStar();
+    
     public void setUp() throws Exception {
 
         GtfsContext context = GtfsLibrary.readGtfs(new File(ConstantsForTests.FAKE_GTFS));
-
-        options = new TraverseOptions();
-        options.setGtfsContext(context);
-
+        options = new RoutingRequest();
         graph = new Graph();
         GTFSPatternHopFactory factory = new GTFSPatternHopFactory(context);
         factory.run(graph);
+        graph.putService(CalendarServiceData.class, GtfsLibrary.createCalendarServiceData(context.getDao()));
+        
         TransitIndexService index = new TransitIndexService() {
             /*
              * mock TransitIndexService always returns preboard/prealight edges for stop A and a
@@ -98,8 +101,9 @@ public class TestPatch extends TestCase {
                 route.setId(routeId);
                 route.setShortName(routeId.getId());
 
-                PatternBoard somePatternBoard = (PatternBoard) graph.getVertex("agency_A_depart")
+                TransitBoardAlight somePatternBoard = (TransitBoardAlight) graph.getVertex("agency_A_depart")
                         .getOutgoing().iterator().next();
+                assertTrue(somePatternBoard.isBoarding());
                 PatternHop somePatternHop = (PatternHop) somePatternBoard.getToVertex()
                         .getOutgoing().iterator().next();
 
@@ -166,6 +170,21 @@ public class TestPatch extends TestCase {
             public List<AgencyAndId> getRoutesForStop(AgencyAndId stop) {
                 return null;
             }
+
+            @Override
+            public Coordinate getCenter() {
+                return null;
+            }
+
+            @Override
+            public int getOvernightBreak() {
+                return 0;
+            }
+
+            @Override
+            public Collection<Stop> getStopsForRoute(AgencyAndId route) {
+                return Collections.emptyList();
+            }
         };
         graph.putService(TransitIndexService.class, index);
     }
@@ -183,16 +202,20 @@ public class TestPatch extends TestCase {
         Vertex stop_e = graph.getVertex("agency_E_arrive");
 
         ShortestPathTree spt;
-        GraphPath path;
+        GraphPath path, unoptimizedPath;
 
-        long startTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 7, 0, 0, 0);
-        spt = AStar.getShortestPathTree(graph, stop_a, stop_e, startTime, options);
+        options.dateTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 7, 0, 0, 0); 
+        options.setRoutingContext(graph, stop_a, stop_e);
+        spt = aStar.getShortestPathTree(options);
 
         path = spt.getPath(stop_e, true);
+        unoptimizedPath = spt.getPath(stop_e, false);
         assertNotNull(path);
         HashSet<Alert> expectedNotes = new HashSet<Alert>();
         expectedNotes.add(note1);
-        assertEquals(expectedNotes, path.states.get(1).getBackEdgeNarrative().getNotes());
+        assertEquals(expectedNotes, path.states.get(1).getBackAlerts());
+        assertEquals(expectedNotes, unoptimizedPath.states.get(1).getBackAlerts());
+
     }
 
     public void testTimeRanges() {
@@ -214,23 +237,25 @@ public class TestPatch extends TestCase {
         ShortestPathTree spt;
         GraphPath path;
 
-        long startTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 7, 0, 0, 0);
-        spt = AStar.getShortestPathTree(graph, stop_a, stop_e, startTime, options);
+        options.dateTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 7, 0, 0, 0);
+        options.setRoutingContext(graph, stop_a, stop_e);
+        spt = aStar.getShortestPathTree(options);
 
         path = spt.getPath(stop_e, true);
         assertNotNull(path);
         // expect no notes because we are during the break
-        assertNull(path.states.get(1).getBackEdgeNarrative().getNotes());
+        assertNull(path.states.get(1).getBackAlerts());
 
         // now a trip during the second period
-        startTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 7, 8, 0, 0);
-        spt = AStar.getShortestPathTree(graph, stop_a, stop_e, startTime, options);
+        options.dateTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 7, 8, 0, 0);
+        options.setRoutingContext(graph, stop_a, stop_e);
+        spt = aStar.getShortestPathTree(options);
 
         path = spt.getPath(stop_e, false); // do not optimize because we want the first trip
         assertNotNull(path);
         HashSet<Alert> expectedNotes = new HashSet<Alert>();
         expectedNotes.add(note1);
-        assertEquals(expectedNotes, path.states.get(1).getBackEdgeNarrative().getNotes());
+        assertEquals(expectedNotes, path.states.get(1).getBackAlerts());
     }
 
     public void testRouteNotePatch() {
@@ -249,13 +274,15 @@ public class TestPatch extends TestCase {
         ShortestPathTree spt;
         GraphPath path;
 
-        long startTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 7, 7, 0, 0);
-        spt = AStar.getShortestPathTree(graph, stop_a, stop_e, startTime, options);
+        long startTime = 
+        options.dateTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 7, 7, 0, 0);
+        options.setRoutingContext(graph, stop_a, stop_e);
+        spt = aStar.getShortestPathTree(options);
 
         path = spt.getPath(stop_e, false);
         assertNotNull(path);
         HashSet<Alert> expectedNotes = new HashSet<Alert>();
         expectedNotes.add(note1);
-        assertEquals(expectedNotes, path.states.get(2).getBackEdgeNarrative().getNotes());
+        assertEquals(expectedNotes, path.states.get(2).getBackAlerts());
     }
 }

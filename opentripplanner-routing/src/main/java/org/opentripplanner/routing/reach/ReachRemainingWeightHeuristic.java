@@ -13,11 +13,13 @@
 
 package org.opentripplanner.routing.reach;
 
+import org.opentripplanner.common.geometry.DistanceLibrary;
+import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.routing.algorithm.strategies.RemainingWeightHeuristic;
 import org.opentripplanner.routing.core.OptimizeType;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseOptions;
+import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 
@@ -29,7 +31,7 @@ public class ReachRemainingWeightHeuristic implements RemainingWeightHeuristic {
 
     private static final long serialVersionUID = -5172878150967231550L;
 
-    private TraverseOptions options;
+    private RoutingRequest options;
 
     private boolean useTransit = false;
     
@@ -37,12 +39,14 @@ public class ReachRemainingWeightHeuristic implements RemainingWeightHeuristic {
 
     private double maxSpeed;
 
+    private DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
+
     @Override
     public double computeInitialWeight(State s, Vertex target) {
         this.options = s.getOptions();
-        this.useTransit = options.getModes().getTransit();
+        this.useTransit = options.getModes().isTransit();
         this.maxSpeed = getMaxSpeed(options);
-        return s.getVertex().fastDistance(target) / maxSpeed;
+        return getDistanceLibrary() .fastDistance(s.getVertex().getCoordinate(), target.getCoordinate()) / maxSpeed;
     }
 
     @Override
@@ -50,7 +54,8 @@ public class ReachRemainingWeightHeuristic implements RemainingWeightHeuristic {
 
         
     	Vertex sv = s.getVertex();
-        double euclidianDistance = sv.fastDistance(target);
+        double euclidianDistance = distanceLibrary.fastDistance(sv.getCoordinate(),
+                target.getCoordinate());
         /*	On a non-transit trip, the remaining weight is simply distance / speed
          *	On a transit trip, there are two cases:
          *	(1) we're not on a transit vehicle.  In this case, there are two possible ways to 
@@ -142,7 +147,8 @@ public class ReachRemainingWeightHeuristic implements RemainingWeightHeuristic {
 
     	Vertex sv = s.getVertex();
         
-        double euclidianDistance = sv.fastDistance(target);
+        double euclidianDistance = distanceLibrary.fastDistance(sv.getCoordinate(), 
+                target.getCoordinate());
         double speed = options.getSpeedUpperBound();
 
         if (useTransit) {
@@ -187,13 +193,13 @@ public class ReachRemainingWeightHeuristic implements RemainingWeightHeuristic {
     }
     
 
-    public static double getMaxSpeed(TraverseOptions options) {
+    public static double getMaxSpeed(RoutingRequest options) {
         if (options.getModes().contains(TraverseMode.TRANSIT)) {
             // assume that the max average transit speed over a hop is 10 m/s, which is roughly
             // true in Portland and NYC, but *not* true on highways
             return 10;
         } else {
-            if (options.optimizeFor == OptimizeType.QUICK) {
+            if (options.optimize == OptimizeType.QUICK) {
                 return options.getSpeedUpperBound();
             } else {
                 // assume that the best route is no more than 10 times better than
@@ -206,4 +212,12 @@ public class ReachRemainingWeightHeuristic implements RemainingWeightHeuristic {
 	@Override
 	public void reset() {
 	}
+
+    public DistanceLibrary getDistanceLibrary() {
+        return distanceLibrary;
+    }
+
+    public void setDistanceLibrary(DistanceLibrary distanceLibrary) {
+        this.distanceLibrary = distanceLibrary;
+    }
 }

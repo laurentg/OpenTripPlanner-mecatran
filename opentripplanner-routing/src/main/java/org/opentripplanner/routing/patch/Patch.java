@@ -16,15 +16,22 @@ package org.opentripplanner.routing.patch;
 import java.io.Serializable;
 
 import org.opentripplanner.routing.core.StateEditor;
-import org.opentripplanner.routing.core.TraverseOptions;
+import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.graph.Graph;
 
+/**
+ * A patch modifies a graph by filtering edge traversals.  Traversals 
+ * can either be forbidden entirely (in the case of cancelled service), or
+ * modified (for instance, to add an alert). 
+ * @author novalis
+ *
+ */
 public interface Patch extends Serializable {
     public Alert getAlert();
 
-    public boolean activeDuring(TraverseOptions options, long start, long end);
+    public boolean activeDuring(RoutingRequest options, long start, long end);
 
-    public boolean displayDuring(TraverseOptions options, long start, long end);
+    public boolean displayDuring(RoutingRequest options, long start, long end);
 
     public String getId();
 

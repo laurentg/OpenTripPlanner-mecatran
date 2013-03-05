@@ -13,7 +13,6 @@
 
 package org.opentripplanner.routing.edgetype;
 
-import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,35 +22,16 @@ import org.opentripplanner.gtfs.GtfsLibrary;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.StateEditor;
 import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseOptions;
-import org.opentripplanner.routing.graph.AbstractEdge;
+import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.routing.vertextype.OnboardVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineString;
 
-/** 
- * A vehicle's wait between the end of one run and the beginning of another run on the same block 
- * */
-class InterlineDwellData implements Serializable {
-
-    private static final long serialVersionUID = 1L;
-
-    public int dwellTime;
-
-    public int patternIndex;
-
-    public AgencyAndId trip;
-    
-    public InterlineDwellData(int dwellTime, int patternIndex, AgencyAndId trip) {
-        this.dwellTime = dwellTime;
-        this.patternIndex = patternIndex;
-        this.trip = trip;
-    }
-}
-
-public class PatternInterlineDwell extends AbstractEdge implements OnBoardForwardEdge, OnBoardReverseEdge {
+public class PatternInterlineDwell extends Edge implements OnBoardForwardEdge, OnBoardReverseEdge {
     private static final Logger _log = LoggerFactory.getLogger(PatternInterlineDwell.class);
 
     private static final long serialVersionUID = 1L;
@@ -108,17 +88,17 @@ public class PatternInterlineDwell extends AbstractEdge implements OnBoardForwar
     }
     
     @Override
-    public double weightLowerBound(TraverseOptions options) {
+    public double weightLowerBound(RoutingRequest options) {
         return timeLowerBound(options);
     }
     
     @Override
-    public double timeLowerBound(TraverseOptions options) {
+    public double timeLowerBound(RoutingRequest options) {
         return bestDwellTime;
     }
 
     public State traverse(State state0) {
-        TraverseOptions options = state0.getOptions();
+        RoutingRequest options = state0.getOptions();
 
         AgencyAndId tripId = state0.getTripId();
         InterlineDwellData dwellData;
@@ -137,22 +117,36 @@ public class PatternInterlineDwell extends AbstractEdge implements OnBoardForwar
         }
 
         StateEditor s1 = state0.edit(this);
+        // FIXME: ugly!
+        TableTripPattern pattern = ((OnboardVertex)s1.getVertex()).getTripPattern();
         s1.incrementTimeInSeconds(dwellData.dwellTime);
-        s1.setTripId(targetTrip.getId());
-        s1.setTrip(dwellData.patternIndex);
+        s1.setTripId(dwellData.trip);
+        // FIXME: this is interlining to the SCHEDULED timetable, not the updated timetable. use resolver.
+        s1.setTripTimes(pattern.getTripTimes(dwellData.patternIndex));
         s1.incrementWeight(dwellData.dwellTime);
+        
+        // This shouldn't be changing - MWC
+        s1.setBackMode(getMode());
         return s1.makeState();
     }
 
-    public Geometry getGeometry() {
+    public LineString getGeometry() {
         return null;
     }
 
     public String toString() {
-        return "PatterninterlineDwell(" + super.toString() + ")";
+        return "PatternInterlineDwell(" + super.toString() + ")";
     }
     
     public Trip getTrip() {
     	return targetTrip;
     }
+
+    public Map<AgencyAndId, InterlineDwellData> getReverseTripIdToInterlineDwellData() {
+        return reverseTripIdToInterlineDwellData;
+    }
+    public Map<AgencyAndId, InterlineDwellData> getTripIdToInterlineDwellData() {
+        return tripIdToInterlineDwellData;
+    }
+
 }

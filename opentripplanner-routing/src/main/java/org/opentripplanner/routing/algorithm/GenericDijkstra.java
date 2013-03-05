@@ -13,13 +13,13 @@
 
 package org.opentripplanner.routing.algorithm;
 
-import org.opentripplanner.routing.algorithm.strategies.ExtraEdgesStrategy;
+import org.opentripplanner.routing.algorithm.strategies.RemainingWeightHeuristic;
 import org.opentripplanner.routing.algorithm.strategies.SearchTerminationStrategy;
 import org.opentripplanner.routing.algorithm.strategies.SkipEdgeStrategy;
 import org.opentripplanner.routing.algorithm.strategies.SkipTraverseResultStrategy;
-import org.opentripplanner.routing.core.OverlayGraph;
+import org.opentripplanner.routing.algorithm.strategies.TrivialRemainingWeightHeuristic;
 import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.TraverseOptions;
+import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.common.pqueue.BinHeap;
@@ -34,9 +34,7 @@ import org.opentripplanner.routing.spt.ShortestPathTreeFactory;
  */
 public class GenericDijkstra {
 
-    private OverlayGraph replacementEdges;
-
-    private TraverseOptions options;
+    private RoutingRequest options;
 
     private ShortestPathTreeFactory _shortestPathTreeFactory;
 
@@ -48,17 +46,12 @@ public class GenericDijkstra {
 
     private SkipTraverseResultStrategy _skipTraverseResultStrategy;
 
-    private ExtraEdgesStrategy _extraEdgesStrategy;
-
     private boolean _verbose = false;
 
-    public GenericDijkstra(TraverseOptions options) {
-        this.options = options;
-    }
+    private RemainingWeightHeuristic heuristic = new TrivialRemainingWeightHeuristic();
 
-    public GenericDijkstra(TraverseOptions options, OverlayGraph replacementEdges) {
+    public GenericDijkstra(RoutingRequest options) {
         this.options = options;
-        this.replacementEdges = replacementEdges;
     }
 
     public void setShortestPathTreeFactory(ShortestPathTreeFactory shortestPathTreeFactory) {
@@ -81,26 +74,24 @@ public class GenericDijkstra {
         _skipTraverseResultStrategy = skipTraverseResultStrategy;
     }
 
-    public void setExtraEdgesStrategy(ExtraEdgesStrategy extraEdgesStrategy) {
-        _extraEdgesStrategy = extraEdgesStrategy;
-    }
-
     public ShortestPathTree getShortestPathTree(State initialState) {
-        ShortestPathTree spt = createShortestPathTree();
+        Vertex target = null;
+        if (options.rctx != null) {
+            target = initialState.getOptions().rctx.target;
+        }
+        ShortestPathTree spt = createShortestPathTree(options);
         OTPPriorityQueue<State> queue = createPriorityQueue();
 
         spt.add(initialState);
         queue.insert(initialState, initialState.getWeight());
 
-        OverlayGraph extraEdges = null;
-        if (_extraEdgesStrategy != null) {
-            extraEdges = new OverlayGraph();
-            _extraEdgesStrategy.addEdgesFor(extraEdges, initialState.getVertex());
-        }
-
         while (!queue.empty()) { // Until the priority queue is empty:
             State u = queue.extract_min();
             Vertex u_vertex = u.getVertex();
+
+            if (!spt.getStates(u_vertex).contains(u)) {
+                continue;
+            }
 
             if (_verbose) {
                 System.out.println("min," + u.getWeight());
@@ -112,7 +103,7 @@ public class GenericDijkstra {
                     null, u, spt, options))
                         break;
 
-            for (Edge edge : u_vertex.getEdges(extraEdges, replacementEdges, options.isArriveBy())) {
+            for (Edge edge : options.isArriveBy() ? u_vertex.getIncoming() : u_vertex.getOutgoing()) {
 
                 if (_skipEdgeStrategy != null
                         && _skipEdgeStrategy.shouldSkipEdge(initialState.getVertex(), null, u, edge, spt,
@@ -135,8 +126,10 @@ public class GenericDijkstra {
                     if (v.exceedsWeightLimit(options.maxWeight))
                         continue;
 
-                    if (spt.add(v))
-                        queue.insert(v, v.getWeight());
+                    if (spt.add(v)) {
+                        double estimate = heuristic.computeForwardWeight(v, target);
+                        queue.insert(v, v.getWeight() + estimate);
+                    }
 
                 }
             }
@@ -151,9 +144,13 @@ public class GenericDijkstra {
         return new BinHeap<State>();
     }
 
-    protected ShortestPathTree createShortestPathTree() {
+    protected ShortestPathTree createShortestPathTree(RoutingRequest options) {
         if (_shortestPathTreeFactory != null)
-            return _shortestPathTreeFactory.create();
-        return new BasicShortestPathTree();
+            return _shortestPathTreeFactory.create(options);
+        return new BasicShortestPathTree(options);
+    }
+
+    public void setHeuristic(RemainingWeightHeuristic heuristic) {
+        this.heuristic = heuristic;
     }
 }

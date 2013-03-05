@@ -13,6 +13,8 @@
 
 package org.opentripplanner.api.ws;
 
+import java.util.HashMap;
+
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -22,8 +24,8 @@ import javax.ws.rs.core.MediaType;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import org.codehaus.jettison.json.JSONException;
-import org.opentripplanner.routing.services.PathServiceFactory;
-import org.springframework.beans.factory.annotation.Required;
+import org.opentripplanner.routing.services.GraphService;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.sun.jersey.api.spring.Autowire;
 
@@ -32,12 +34,9 @@ import com.sun.jersey.api.spring.Autowire;
 @Autowire
 public class Metadata {
 
-    private PathServiceFactory pathServiceFactory;
+    @Autowired GraphService graphService;
 
-    @Required
-    public void setPathServiceFactory(PathServiceFactory pathServiceFactory) {
-        this.pathServiceFactory = pathServiceFactory;
-    }
+    HashMap<String, GraphMetadata> metadata = new HashMap<String, GraphMetadata>();
 
     /**
      * Returns metadata about the graph -- presently, this is just the extent of the graph.
@@ -53,8 +52,14 @@ public class Metadata {
     @GET
     @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML, MediaType.TEXT_XML })
     public GraphMetadata getMetadata(
-            @DefaultValue("") @QueryParam(RequestInf.ROUTER_ID) String routerId)
+            @DefaultValue("") @QueryParam("routerId") String routerId)
             throws JSONException {
-        return new GraphMetadata(pathServiceFactory.getPathService(routerId).getGraphService());
+
+        GraphMetadata data = metadata.get(routerId);
+        if (data == null) {
+            data = new GraphMetadata(graphService.getGraph(routerId));
+            metadata.put(routerId, data);
+        }
+        return data;
     }
 }

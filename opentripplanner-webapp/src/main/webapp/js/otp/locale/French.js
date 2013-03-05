@@ -167,6 +167,12 @@ otp.locale.French = {
         trip_details : "Détails de l'itinéraire",
         fare         : "Tarif",
         fare_symbol  : "\u20ac",
+
+        // TODO  -- used in the Trip Details summary to describe different fares 
+        regular_fare : "",
+        student_fare : "",
+        senior_fare  : "",
+
         travel       : "Départ le",
         valid        : "Calculé le",
         trip_length  : "Durée",
@@ -204,6 +210,12 @@ otp.locale.French = {
     },
 
     time : {
+        // TODO
+        hour_abbrev    : "hour",
+        hours_abbrev   : "hours",
+        hour           : "hour",
+        hours          : "hours",
+
         format : "d.m.Y \\à H:i",
         date_format : "d-m-Y",
         time_format : "H:i",

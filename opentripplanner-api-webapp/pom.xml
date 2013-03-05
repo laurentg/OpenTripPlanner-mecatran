@@ -1,26 +1,25 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    
     <artifactId>opentripplanner-api-webapp</artifactId>
     <packaging>war</packaging>
-    <name>opentripplanner-api-webapp</name>
+    <name>OpenTripPlanner API Webapp</name>
 
     <parent>
         <groupId>org.opentripplanner</groupId>
         <artifactId>opentripplanner</artifactId>
-        <version>0.8.0-SNAPSHOT</version>
+        <version>0.9.1</version>
     </parent>
-
-    <repositories>
-        <repository>
-            <id>download.java.net</id>
-            <url>http://download.java.net/maven/2</url>
-        </repository>
-    </repositories>
 
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>opentripplanner-routing</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>opentripplanner-analyst</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -46,45 +45,23 @@
         <dependency>
             <groupId>com.sun.jersey</groupId>
             <artifactId>jersey-server</artifactId>
-            <version>${jersey.version}</version>
         </dependency>
         <dependency>
             <groupId>com.sun.jersey</groupId>
             <artifactId>jersey-json</artifactId>
-            <version>${jersey.version}</version>
         </dependency>
         <dependency>
             <groupId>com.sun.jersey</groupId>
             <artifactId>jersey-client</artifactId>
-            <version>${jersey.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.sun.jersey.contribs</groupId>
             <artifactId>jersey-spring</artifactId>
-            <version>${jersey.version}</version>
-            <exclusions>
-              <exclusion>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-core</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.springframework</groupId>
-            <artifactId>spring-web</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-beans</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-context</artifactId>
-              </exclusion>
-            </exclusions>
+        </dependency>
+        <dependency>
+          <groupId>org.geotools</groupId>
+          <artifactId>gt-geojson</artifactId>
         </dependency>
         <dependency>
             <groupId>net.sf.json-lib</groupId>
@@ -113,7 +90,6 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
-            <version>1.5.8</version>
         </dependency>
         <dependency>
             <groupId>javax.ws.rs</groupId>
@@ -181,6 +157,12 @@
       	  <artifactId>cglib</artifactId>
       	  <version>2.2.2</version>
         </dependency>
+        <dependency>
+          <groupId>org.mockito</groupId>
+          <artifactId>mockito-all</artifactId>
+          <version>1.9.0</version>
+          <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -194,7 +176,13 @@
                 <executions>
                     <execution>
                         <id>copy-resources</id>
-                        <phase>process-resources</phase>
+                        <!-- bind to the generate-resources phase, which comes just before 
+                        process-resources. the WAR packaging type automatically defines a
+                        resources:resources execution in the process-resources phase, which copies 
+                        resources from /src/main/resources to target/classes, and this automatic 
+                        execution will happen _before_ any manually declared execution in the same 
+                        phase, copying the resources into target before the defaults are provided. -->
+                        <phase>generate-resources</phase>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
@@ -215,7 +203,7 @@
             <plugin>
                 <groupId>org.codehaus.enunciate</groupId>
                 <artifactId>maven-enunciate-plugin</artifactId>
-                <version>1.23</version>
+                <version>1.25</version>
                 <executions>
                   <execution>
                     <!-- default binding for docs goal is process-sources phase -->

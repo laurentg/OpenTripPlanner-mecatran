@@ -13,11 +13,9 @@
 
 package org.opentripplanner.api.servlet;
 
+import java.util.LinkedList;
 import java.util.List;
 
-import org.springframework.stereotype.Component;
-
-@Component
 public class PeriodicGraphUpdater {
     private UpdateTask updater;
 
@@ -25,12 +23,15 @@ public class PeriodicGraphUpdater {
 
     private Thread thread;
 
-    private List<Runnable> updaters;
+    private List<Runnable> updaters = new LinkedList<Runnable>();
 
     public void start() {
         updater = new UpdateTask();
         thread = new Thread(updater);
+        // is there any reason this can't be a daemon thread? seems like a good fit.
         thread.setDaemon(false);
+        // useful to name threads for debugging / profiling
+        thread.setName("Graph Updater Thread");
         thread.start();
     }
 

@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.TraverseOptions;
+import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.edgetype.LegSwitchingEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
@@ -68,7 +68,7 @@ public class TSPPathFinder {
             Map<Vertex, HashMap<Vertex, GraphPath>> paths, Collection<Vertex> intermediates, double costSoFar) {
         
         if (intermediates.size() == 0) {
-        	//base case: simply the path from the fromVertex to the toVertex
+            //base case: simply the path from the fromVertex to the toVertex
             TSPPath path = new TSPPath(toVertex, (paths.get(fromVertex).get(toVertex)).getWeight());
             return path;
         }
@@ -79,7 +79,8 @@ public class TSPPathFinder {
         //find all paths through the remaining intermediate vertices, considering this as the start 
         for (Vertex vertex : intermediates) {
             reducedIntermediates.remove(vertex);
-            TSPPath path = findShortestPathInternal(toVertex, vertex, paths, reducedIntermediates, costSoFar + paths.get(fromVertex).get(vertex).getWeight());
+            TSPPath path = findShortestPathInternal(toVertex, vertex, paths, reducedIntermediates,
+                    costSoFar + paths.get(fromVertex).get(vertex).getWeight());
             if (shortest == null || shortest.cost > path.cost) {
                 shortest = path;
                 path.vertices.add(0, vertex);
@@ -90,8 +91,8 @@ public class TSPPathFinder {
     }
     
     public static GraphPath findShortestPath(Vertex toVertex, Vertex fromVertex,
-            Map<Vertex, HashMap<Vertex, GraphPath>> paths, HashSet<Vertex> vertices, long time, TraverseOptions options) {
-   
+            Map<Vertex, HashMap<Vertex, GraphPath>> paths, HashSet<Vertex> vertices, long time, RoutingRequest options) {
+
         TSPPath shortestPath = findShortestPathInternal(toVertex, fromVertex, paths, vertices, 0);
         
         Vertex firstIntermediate = shortestPath.vertices.get(0);

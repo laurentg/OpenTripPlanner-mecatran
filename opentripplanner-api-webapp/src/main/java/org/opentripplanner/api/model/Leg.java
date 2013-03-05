@@ -15,7 +15,6 @@ package org.opentripplanner.api.model;
 
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 
@@ -77,6 +76,13 @@ public class Leg {
      */
     @XmlAttribute
     public String routeColor = null;
+    
+    /**
+     * For transit legs, the ID of the route.
+     * For non-transit legs, null.
+     */
+    @XmlAttribute
+    public String routeId = null;
 
     /**
      * For transit leg, the route's text color (if one exists). For non-transit legs, null.
@@ -167,6 +173,9 @@ public class Leg {
 
     @XmlAttribute
     public String alightRule;
+
+    @XmlAttribute
+    public Boolean rentedBike;
 
     /**
      * bogus walk/bike/car legs are those that have 0.0 distance, 

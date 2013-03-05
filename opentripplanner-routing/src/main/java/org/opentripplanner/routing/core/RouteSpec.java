@@ -14,6 +14,8 @@
 package org.opentripplanner.routing.core;
 
 import java.io.Serializable;
+import java.util.LinkedList;
+import java.util.List;
 
 /** 
  * A particular route as a user would see it for the purposes of multiple itineraries.
@@ -35,6 +37,22 @@ public class RouteSpec implements Cloneable, Serializable {
         this.routeName = routeName;
     }
 
+    public RouteSpec(String agencyAndRouteName) {
+        String[] routeSpec = agencyAndRouteName.split("_", 2);
+        if (routeSpec.length != 2) {
+            throw new IllegalArgumentException("AgencyId or routeId not set");
+        }
+        agency = routeSpec[0];
+        routeName = routeSpec[1];
+    }
+
+    public static List<RouteSpec> listFromString(String list) {
+        List<RouteSpec> ret = new LinkedList<RouteSpec>();
+        for (String element : list.split(","))
+            ret.add(new RouteSpec(element));
+        return ret;
+    }
+
     @Override
     public boolean equals(Object other) {
         if (other instanceof RouteSpec) {
@@ -48,12 +66,16 @@ public class RouteSpec implements Cloneable, Serializable {
     public int hashCode() {
         return agency.hashCode() ^ routeName.hashCode();
     }
-    
+
+    public String getRepresentation() {
+        return agency + "_" + routeName;
+    }
+
     @Override
     public String toString() {
     	return String.format("RouteSpec<agency=%s name=%s>", agency, routeName);
     }
-    
+
     public RouteSpec clone() {
         try {
             return (RouteSpec) super.clone();

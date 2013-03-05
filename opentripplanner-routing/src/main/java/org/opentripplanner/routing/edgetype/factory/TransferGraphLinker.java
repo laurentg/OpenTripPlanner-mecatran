@@ -13,28 +13,31 @@
 
 package org.opentripplanner.routing.edgetype.factory;
 
+import org.opentripplanner.common.geometry.DistanceLibrary;
+import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.core.TransferTable;
 import org.opentripplanner.routing.edgetype.TransferEdge;
 import org.opentripplanner.routing.graph.Graph;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
 
 /** Link graph based on transfers.txt.  Intended for testing */
 public class TransferGraphLinker {
 
     private Graph graph;
+    private DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
 
     public TransferGraphLinker(Graph graph) {
         this.graph = graph;
     }
     
     public void run() {
-        GeometryFactory factory = new GeometryFactory();
         for (TransferTable.Transfer transfer : graph.getTransferTable().getAllTransfers()) {
  
-            double distance = transfer.from.distance(transfer.to.getCoordinate());
+            double distance = distanceLibrary.distance(transfer.from.getCoordinate(), 
+                    transfer.to.getCoordinate());
             TransferEdge edge = null;
             switch (transfer.seconds) {
                 case TransferTable.FORBIDDEN_TRANSFER:
@@ -50,7 +53,7 @@ public class TransferGraphLinker {
             }
             
             if (edge != null) {
-                LineString geometry = factory.createLineString(new Coordinate[] {
+                LineString geometry = GeometryUtils.getGeometryFactory().createLineString(new Coordinate[] {
                         transfer.from.getCoordinate(),
                         transfer.to.getCoordinate() });
                 edge.setGeometry(geometry);

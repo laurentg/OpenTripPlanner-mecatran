@@ -178,6 +178,12 @@ otp.locale.Marathi = {
         trip_details : "Le Trip Details",
         fare         : "Fare",
         fare_symbol  : "रुपया ",
+
+        // TODO  -- used in the Trip Details summary to describe different fares 
+        regular_fare : "",
+        student_fare : "",
+        senior_fare  : "",
+
         travel       : "Travel",
         valid        : "Valid",
         trip_length  : "Time",
@@ -219,6 +225,12 @@ otp.locale.Marathi = {
 
     time:
     {
+        // TODO
+        hour_abbrev    : "hour",
+        hours_abbrev   : "hours",
+        hour           : "hour",
+        hours          : "hours",
+
 // TODO
         format        : "D, j M H:i",
         date_format   : "d-m-Y",

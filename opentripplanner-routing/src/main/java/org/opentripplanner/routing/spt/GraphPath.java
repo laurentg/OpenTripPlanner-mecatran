@@ -19,14 +19,9 @@ import java.util.List;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Trip;
 import org.opentripplanner.gtfs.GtfsLibrary;
-import org.opentripplanner.routing.core.EdgeNarrative;
-import org.opentripplanner.routing.core.MutableEdgeNarrative;
 import org.opentripplanner.routing.core.RouteSpec;
+import org.opentripplanner.routing.core.RoutingContext;
 import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.StateEditor;
-import org.opentripplanner.routing.core.TraverseOptions;
-import org.opentripplanner.routing.edgetype.Board;
-import org.opentripplanner.routing.edgetype.PatternBoard;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 import org.slf4j.Logger;
@@ -47,7 +42,8 @@ public class GraphPath {
 
     private double walkDistance = 0;
 
-    private TraverseOptions options;
+    // don't really need to save this (available through State) but why not
+    private RoutingContext rctx;
 
     /**
      * Construct a GraphPath based on the given state by following back-edge fields all the way back
@@ -65,16 +61,16 @@ public class GraphPath {
      *            - the traverse options used to reach this state
      */
     public GraphPath(State s, boolean optimize) {
-        this.options = s.getOptions();
-        this.back = options.isArriveBy();
-
+        this.rctx = s.getContext();
+        this.back = s.getOptions().isArriveBy();
+        
         /* Put path in chronological order, and optimize as necessary */
         State lastState;
         walkDistance = s.getWalkDistance();
         if (back) {
-            lastState = optimize ? optimize(s) : reverse(s);
+            lastState = optimize ? s.optimize() : s.reverse();
         } else {
-            lastState = optimize ? reverse(optimize(s)) : s;
+            lastState = optimize ? s.optimize().reverse() : s;
         }
         // DEBUG
         // lastState = s;
@@ -127,12 +123,7 @@ public class GraphPath {
         List<RouteSpec> ret = new LinkedList<RouteSpec>();
         for (State s : states) {
             Edge e = s.getBackEdge();
-            Trip trip = null;
-            if (e instanceof PatternBoard) {
-                trip = ((PatternBoard) e).getPattern().getTrip(s.getTrip());
-            } else if (e instanceof Board) {
-                trip = ((Board) e).getTrip();
-            }
+            Trip trip = s.getBackTrip();
             if ( trip != null) {
                 String routeName = GtfsLibrary.getRouteName(trip.getRoute());
                 RouteSpec spec = new RouteSpec(trip.getId().getAgencyId(), routeName);
@@ -152,15 +143,10 @@ public class GraphPath {
         List<AgencyAndId> ret = new LinkedList<AgencyAndId>();
         for (State s : states) {
             Edge e = s.getBackEdge();
-            Trip trip = null;
-            if (e instanceof PatternBoard) {
-                trip  = ((PatternBoard) e).getPattern().getTrip(s.getTrip());
-            } else if (e instanceof Board) {
-                trip = ((Board) e).getTrip();
-            } else {
-                continue;
-            }
-                        ret.add(trip.getId());
+            if (e == null) continue;
+            Trip trip = s.getBackTrip();
+            if (trip != null)
+                ret.add(trip.getId());
         }
         return ret;
     }
@@ -189,82 +175,6 @@ public class GraphPath {
      * Private Methods
      ****/
 
-    /**
-     * Reverse the path implicit in the given state, i.e. produce a new chain of states that leads
-     * from this state to the other end of the implicit path.
-     */
-    private static State reverse(State orig) {
-
-        State ret = orig.reversedClone();
-
-        while (orig.getBackState() != null) {
-            Edge edge = orig.getBackEdge();
-            EdgeNarrative narrative = orig.getBackEdgeNarrative();
-            StateEditor editor = ret.edit(edge, narrative);
-            // note the distinction between setFromState and setBackState
-            editor.setFromState(orig);
-            editor.incrementTimeInSeconds(orig.getAbsTimeDeltaSec());
-            editor.incrementWeight(orig.getWeightDelta());
-            if (orig.isCarParked() != orig.getBackState().isCarParked())
-            	editor.setCarParked(!orig.isCarParked());
-            if (orig.isBikeRenting() != orig.getBackState().isBikeRenting())
-            	editor.setBikeRenting(!orig.isBikeRenting());
-            ret  = editor.makeState();
-            orig = orig.getBackState();
-        }
-
-        return ret;
-    }
-
-    /**
-     * Reverse the path implicit in the given state, re-traversing all edges in the opposite
-     * direction so as to remove any unnecessary waiting in the resulting itinerary. This produces a
-     * path that passes through all the same edges, but which may have a shorter overall duration
-     * due to different weights on time-dependent (e.g. transit boarding) edges.
-     * 
-     * @param s
-     *            - a state resulting from a path search
-     * @return a state at the other end of a reversed, optimized path
-     */
-    // optimize is now very similar to reverse, and the two could conceivably be combined
-    private static State optimize(State orig) {
-        State unoptimized = orig;
-    	State ret = orig.reversedClone();
-        Edge edge = null;
-        try {
-            while (orig.getBackState() != null) {
-                edge = orig.getBackEdge();
-                ret = edge.traverse(ret);
-                EdgeNarrative origNarrative = orig.getBackEdgeNarrative();
-                EdgeNarrative retNarrative = ret.getBackEdgeNarrative();
-                copyExistingNarrativeToNewNarrativeAsAppropriate(origNarrative, retNarrative);
-                orig = orig.getBackState();
-            }
-        } catch (NullPointerException e) {
-            LOG.warn("Cannot reverse path at edge: " + edge
-                    + " returning unoptimized path.  If edge is a PatternInterlineDwell,"
-                    + " this is not totally unexpected; otherwise, you might want to"
-                    + " look into it");
-            return reverse(unoptimized);
-        }
-        return ret;
-    }
-
-    private static void copyExistingNarrativeToNewNarrativeAsAppropriate(EdgeNarrative from,
-            EdgeNarrative to) {
-
-        if (!(to instanceof MutableEdgeNarrative))
-            return;
-
-        MutableEdgeNarrative m = (MutableEdgeNarrative) to;
-
-        if (to.getFromVertex() == null)
-            m.setFromVertex(from.getFromVertex());
-
-        if (to.getToVertex() == null)
-            m.setToVertex(from.getToVertex());
-    }
-
     public void dump() {
         System.out.println(" --- BEGIN GRAPHPATH DUMP ---");
         System.out.println(this.toString());
@@ -273,8 +183,20 @@ public class GraphPath {
         System.out.println(" --- END GRAPHPATH DUMP ---");
     }
 
+    public void dumpPathParser() {
+        System.out.println(" --- BEGIN GRAPHPATH DUMP ---");
+        System.out.println(this.toString());
+        for (State s : states) 
+            System.out.println(s.getPathParserStates() + s + " via " + s.getBackEdge());
+        System.out.println(" --- END GRAPHPATH DUMP ---");
+    }
+
     public double getWalkDistance() {
         return walkDistance;
+    }
+    
+    public RoutingContext getRoutingContext() {
+        return rctx;
     }
 
 }

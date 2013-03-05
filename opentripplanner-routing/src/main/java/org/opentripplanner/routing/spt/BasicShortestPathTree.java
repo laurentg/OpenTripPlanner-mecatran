@@ -20,7 +20,11 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.opentripplanner.common.MavenVersion;
 import org.opentripplanner.routing.core.State;
+import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.edgetype.PlainStreetEdge;
+import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 
 /**
@@ -31,7 +35,8 @@ import org.opentripplanner.routing.graph.Vertex;
  * @author andrewbyrd
  */
 public class BasicShortestPathTree extends AbstractShortestPathTree {
-    private static final long serialVersionUID = 20110523L; // YYYYMMDD
+    
+    private static final long serialVersionUID = MavenVersion.VERSION.getUID();
 
     private static final int DEFAULT_CAPACITY = 500;
 
@@ -41,8 +46,8 @@ public class BasicShortestPathTree extends AbstractShortestPathTree {
      * Parameterless constructor that uses a default capacity for internal vertex-keyed data
      * structures.
      */
-    public BasicShortestPathTree() {
-        this(DEFAULT_CAPACITY);
+    public BasicShortestPathTree(RoutingRequest options) {
+        this(options, DEFAULT_CAPACITY);
     }
 
     /**
@@ -52,7 +57,8 @@ public class BasicShortestPathTree extends AbstractShortestPathTree {
      * @param n
      *            - the initial size of vertex-keyed maps
      */
-    public BasicShortestPathTree(int n) {
+    public BasicShortestPathTree(RoutingRequest options, int n) {
+        super(options);
         states = new IdentityHashMap<Vertex, State>(n);
     }
 
@@ -72,8 +78,15 @@ public class BasicShortestPathTree extends AbstractShortestPathTree {
         if (existing == null || state.betterThan(existing)) {
             states.put(here, state);
             return true;
-        } else
+        } else {
+            final Edge backEdge = existing.getBackEdge();
+            if (backEdge != state.getBackEdge()
+                    && ((backEdge instanceof PlainStreetEdge) && (!((PlainStreetEdge) backEdge)
+                            .getTurnRestrictions().isEmpty())))
+                return true;
+
             return false;
+        }
     }
 
     @Override
@@ -92,7 +105,12 @@ public class BasicShortestPathTree extends AbstractShortestPathTree {
 
     @Override
     public boolean visit(State s) {
-        return (s == states.get(s.getVertex()));
+        final State existing = states.get(s.getVertex());
+        final Edge backEdge = existing.getBackEdge();
+        if ((backEdge instanceof PlainStreetEdge) && (!((PlainStreetEdge) backEdge)
+                        .getTurnRestrictions().isEmpty()))
+            return true;
+        return (s == existing);
     }
 
     @Override

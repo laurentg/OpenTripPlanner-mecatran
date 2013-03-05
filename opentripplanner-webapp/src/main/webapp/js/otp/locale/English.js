@@ -17,7 +17,6 @@ otp.namespace("otp.locale");
 /**
   * @class
   */
-
 otp.locale.English = {
 
     config :
@@ -43,7 +42,6 @@ otp.locale.English = {
         next             : "Next map position"
     },
 
-    // TODO Localize Me
     bikeTriangle : 
     {
         safeName : "Bike friendly",
@@ -175,13 +173,16 @@ otp.locale.English = {
         about        : "About",
         stop_id      : "Stop ID",
         trip_details : "Trip details",
-        fare         : "Fare",
-        fare_symbol  : "$",
         travel       : "Travel",
         valid        : "Valid",
         trip_length  : "Time",
         with_a_walk  : "with a walk of",
-        alert_for_rt : "Alert for route"
+        alert_for_rt : "Alert for route",
+        fare         : "Fare",
+        regular_fare : "Regular",
+        student_fare : "Student",
+        senior_fare  : "Senior",
+        fare_symbol  : "$"
     },
 
     // see otp.planner.Templates for use -- one output are the itinerary leg headers
@@ -216,6 +217,11 @@ otp.locale.English = {
 
     time:
     {
+        hour_abbrev    : "hour",
+        hours_abbrev   : "hours",
+        hour           : "hour",
+        hours          : "hours",
+
         minute         : "minute",
         minutes        : "minutes",
         minute_abbrev  : "min",
@@ -224,7 +230,7 @@ otp.locale.English = {
         seconds_abbrev : "secs",
         format         : "F jS, Y @ g:ia",
         date_format    : "n/j/Y",
-        time_format    : "g:i a",
+        time_format    : "g:ia",
         months         : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     },
 
@@ -257,7 +263,9 @@ otp.locale.English = {
             intermediate  : "Intermediate Places",
             minimize      : "Show me the",
             maxWalkDistance: "Maximum walk",
+            walkSpeed     : "Walk speed",
             maxBikeDistance: "Maximum bike",
+            bikeSpeed     : "Bike speed",
             arriveDepart  : "Arrive by/Depart at",
             mode          : "Travel by",
             wheelchair    : "Wheelchair accessible trip", 
@@ -351,16 +359,36 @@ otp.locale.English = {
             ['80467',  '50 miles'],
             ['160934',  '100 miles']
         ],
-    
+
+	walkSpeed :
+	[
+		['0.447',  '1 mph'],
+		['0.894',  '2 mph'],
+		['1.341',  '3 mph'],
+		['1.788',  '4 mph'],
+		['2.235',  '5 mph']
+	],
+
         mode : 
         [
             ['TRANSIT,WALK', 'Transit'],
-// DO WE REALLY NEED THIS?  ISN'T BUS & TRAIN the same as TRANSIT, WALK
-//          ['BUSISH,TRAINISH,WALK', 'Bus & Train'],
             ['BUSISH,WALK', 'Bus only'],
             ['TRAINISH,WALK', 'Train only'],
             ['WALK', 'Walk only'],
-            ['BICYCLE', 'Bicycle'],
+            ['BICYCLE', 'Bicycle only'],
+            ['TRANSIT,BICYCLE', 'Transit & Bicycle']
+        ],
+
+        // TODO: remove this hack, and provide code that allows the mode array to be configured with different transit modes.
+        //       (note that we've been broken for awhile here, since many agencies don't have a 'Train' mode either...this needs attention)
+        // IDEA: maybe we start with a big array (like below), and the pull out modes from this array when turning off various modes...
+        with_bikeshare_mode : 
+        [
+            ['TRANSIT,WALK', 'Transit'],
+            ['BUSISH,WALK', 'Bus only'],
+            ['TRAINISH,WALK', 'Train only'],
+            ['WALK', 'Walk only'],
+            ['BICYCLE', 'Bicycle only'],
             ['WALK,BICYCLE', 'Rented Bicycle'],
             ['TRANSIT,BICYCLE', 'Transit & Bicycle'],
             ['TRANSIT,WALK,BICYCLE', 'Transit & Rented Bicycle'],
@@ -377,3 +405,4 @@ otp.locale.English = {
 
     CLASS_NAME : "otp.locale.English"
 };
+
