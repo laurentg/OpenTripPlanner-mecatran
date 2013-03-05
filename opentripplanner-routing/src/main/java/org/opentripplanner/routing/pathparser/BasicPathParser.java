@@ -48,8 +48,8 @@ public class BasicPathParser extends PathParser {
         Nonterminal transitLeg = seq(plus(STATION), plus(TRANSIT), plus(STATION));
         Nonterminal itinerary = seq(optionalNontransitLeg, star(transitLeg, optionalNontransitLeg));
         DFA = itinerary.toDFA().minimize();
-        System.out.println(DFA.toGraphViz());
-        System.out.println(DFA.dumpTable());
+        //System.out.println(DFA.toGraphViz());
+        //System.out.println(DFA.dumpTable());
     }
 
     @Override
