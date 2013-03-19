@@ -55,6 +55,8 @@ import org.opentripplanner.openstreetmap.services.OpenStreetMapContentHandler;
 import org.opentripplanner.openstreetmap.services.OpenStreetMapProvider;
 import org.opentripplanner.routing.algorithm.GenericDijkstra;
 import org.opentripplanner.routing.algorithm.strategies.SkipEdgeStrategy;
+import org.opentripplanner.routing.bike_rental.BikeRentalStation;
+import org.opentripplanner.routing.bike_rental.BikeRentalStationService;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
@@ -586,6 +588,8 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
         private void processBikeRentalNodes() {
             _log.debug("Processing bike rental nodes...");
             int n = 0;
+            BikeRentalStationService bikeRentalService = new BikeRentalStationService();
+            graph.putService(BikeRentalStationService.class, bikeRentalService);
             for (OSMNode node : _bikeRentalNodes) {
                 n++;
                 int capacity = Integer.MAX_VALUE;
@@ -602,12 +606,17 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                      continue;
                 }
                 String creativeName = wayPropertySet.getCreativeNameForWay(node);
-                BikeRentalStationVertex station = new BikeRentalStationVertex(graph, "" + node.getId(), "bike rental "
-                        + node.getId(), node.getLon(), node.getLat(),
-                        creativeName, capacity);
-
-                new RentABikeOnEdge(station, station, network);
-                new RentABikeOffEdge(station, station, network);
+                BikeRentalStation station = new BikeRentalStation();
+                station.id = "" + node.getId();
+                station.name = creativeName;
+                station.x = node.getLon();
+                station.y = node.getLat();
+                station.spacesAvailable = capacity / 2;
+                station.bikesAvailable = capacity / 2;
+                bikeRentalService.addStation(station);
+                BikeRentalStationVertex stationVertex = new BikeRentalStationVertex(graph, station);
+                new RentABikeOnEdge(stationVertex, stationVertex, network);
+                new RentABikeOffEdge(stationVertex, stationVertex, network);
             }
             _log.debug("Created " + n + " bike rental stations.");
         }
